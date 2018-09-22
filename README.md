@@ -2,6 +2,9 @@
 gunosyのようなレコメンド系のニュースサイト
 
 ## 全体設計
+<div align="center">
+  <img width="100%" src="https://user-images.githubusercontent.com/4949982/45913267-519f3800-be6a-11e8-9a18-2fd867700323.png">
+</div>
 
 ## コードスニペット(スクレイピング)
  - https://github.com/GINK03/scraping-designs  
