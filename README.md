@@ -4,7 +4,7 @@ gunosyのようなレコメンド系のニュースサイト
 ## 全体設計
 
 ## コードスニペット(スクレイピング)
- - https://github.com/GINK03/scraping-designs
+ - https://github.com/GINK03/scraping-designs  
  (スクレイピングのいろいろなデザイン)
  
 ## コードスニペット(ウェブフレームワーク)
