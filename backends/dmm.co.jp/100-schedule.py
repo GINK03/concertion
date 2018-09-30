@@ -1,6 +1,7 @@
 
 import schedule
 import os
+import time
 def job():
 	os.system('python3 00-scrape.py')
 	os.system('python3 10-parse-fill.py') 
