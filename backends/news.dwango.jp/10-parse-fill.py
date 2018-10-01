@@ -35,4 +35,4 @@ for path in Path('htmls').glob('*'):
           'article':article
         }
   print(obj)
-  #collection.insert_one(obj)
+  collection.insert_one(obj)
