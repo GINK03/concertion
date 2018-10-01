@@ -1,6 +1,6 @@
 import shelve
 
-db = shelve.open('../cold_start_dataset2/spam')
+db = shelve.open('../cold_start_dataset/spam')
 
 targets = []
 for key in list(db.keys()):

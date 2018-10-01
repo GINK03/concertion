@@ -6,14 +6,14 @@ import pickle
 import sys
 import json
 if '--wakati' in sys.argv:
-  db = shelve.open('../cold_start_dataset2/spam')
+  db = shelve.open('../cold_start_dataset/spam')
   m = MeCab.Tagger('-Owakati')
   tfs = []
   for key in list(db.keys()):
     obj = db[key]
 
     try:
-      page = obj['title'] + obj['body']
+      page = obj['title'] + obj['page-content']
     except: 
       print(list(obj.keys()))
       continue
