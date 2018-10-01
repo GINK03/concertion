@@ -6,7 +6,7 @@ from pymongo import MongoClient
 client = MongoClient('localhost', 27017)
 db = client['news_dwango']
 collection = db['collection']
-for path in Path('./htmls').glob('*'):
+for path in Path('htmls').glob('*'):
   soup = BS(path.open().read())
 
   title = soup.title
@@ -20,10 +20,14 @@ for path in Path('./htmls').glob('*'):
   canonical = canonical.get('href')
 
 
-  date = soup.find('span', {'class':'publish-date'})
-  date = date.text
+  date = soup.find('span', {'class':'date'})
+  if date is None:
+    continue
+  date = date.text.replace('公開日：', '')
 
-  article = soup.find('article')
+  article = soup.find('div', {'class':'page-content'})
+  if article is None:
+    continue
   article = re.sub(r'\s{1,}', ' ', article.text)
   obj = { 'title': title,
           'canonical':canonical,
