@@ -30,8 +30,8 @@ def build(url):
     hrefs = set()
     for a in soup.find_all('a', {'href':True}):
       href = a.get('href')
-      if href[0] == '/' and len(href) > 1:
-        href = seed[:-1] + href
+      #if href[0] == '/' and len(href) > 1:
+      #  href = seed[:-1] + href
       hrefs.add(href)
     return hrefs
   except Exception as ex:

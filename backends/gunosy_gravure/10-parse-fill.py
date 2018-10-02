@@ -24,8 +24,8 @@ for path in Path('htmls').glob('*'):
   if date is None:
     continue
   date = date.text.replace('更新日:', '')
-
-  article = soup.find('div', {'class':'article_main'})
+  print(date)
+  article = soup.find('div', {'class':'article'})
   if article is None:
     continue
   article = re.sub(r'\s{1,}', ' ', article.text)
