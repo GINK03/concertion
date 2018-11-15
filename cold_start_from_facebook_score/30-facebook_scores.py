@@ -61,6 +61,7 @@ if '--scan' in sys.argv:
 				if delta_time.seconds >= timedelta(seconds=3600 * 3).seconds:
 					print('scan', url)
 					graph_access(url, acc, obj)
+					time.sleep(1.5)
 					continue
 				continue
 			else:
