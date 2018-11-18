@@ -18,8 +18,8 @@ def job():
 			parsed_date = datetime.strptime(key, '%Y-%m-%d %H:%M:%S')
 			parsed_dates.append(parsed_date)
 		min_date_delta = min([now - parsed_date for parsed_date in parsed_dates])
-		# 36時間以上古いものはスキップ
-		if min_date_delta.seconds >= 3600*36:
+		# 48時間以上古いものはスキップ
+		if min_date_delta.days >= 2:
 			continue
 		#print(key,val, parsed_date)
 		#print(min_date_delta)

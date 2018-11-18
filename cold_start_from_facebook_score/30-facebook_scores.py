@@ -34,7 +34,7 @@ def graph_access(url, acc, obj=None):
 		time.sleep(30.0)
 		return
 	datum = json.dumps(obj, indent=2, ensure_ascii=False)
-	print(datum) 
+	#print(datum) 
 	open(f'facebook_score_v2/{url_hash}', 'w').write( datum )
 
 accs = [ line.strip() for line in open('tokens') ]
@@ -56,10 +56,13 @@ if '--scan' in sys.argv:
 
 				delta_time_head = now_datetime - eval_times[0]	
 				print(eval_times, delta_time_head.seconds)
-				# 最古のものから36時間以上,古いものはunlinkする
-				if delta_time_head.seconds >= 3600 * 24 * 3:
+				# 最古のものから48時間以上,古いものはunlinkする
+				print(delta_time_head.days)
+				if delta_time_head.seconds >= 2: 
 					print('remove', url)
 					path.unlink()
+					#import shutil
+					#shutil.move(Path(f'facebook_score_v2/{url_hash}'), f'facebook_score_v2_old/{url_hash}')
 					continue
 				# 三時間たびにスキャンする
 				if delta_time.seconds >= timedelta(seconds=3600 * 3).seconds:
