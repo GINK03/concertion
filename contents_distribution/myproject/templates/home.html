@@ -5,10 +5,34 @@
 <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.10.3/babel.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<style>
+#rankings {
+    width: 800px;
+    margin: 0 auto;
+    background-color: #f2f2f2;
+}
+.fb_score {
+    width: 200px;
+		font-size: 70%;
+		color: white;
+    background-color: #002699;
+}
+.shrink_text {
+		font-size: 70%;
+		color: black;
+}
+</style>
 </head>
 <body>
 
-<div id="test">
+<div id="rankings">
+	{% for url, datum in data %}	
+		<div class="facebook" align="left"> 
+			<a target="_blank" href={{ url }}> {{ datum.h1 }} </a>
+			<div class="fb_score"> Facebookスコア  {{ datum.score }} </div>
+			<div class="shrink_text"> {{ datum.paragraph[:200] + '...' }} </div>
+		</div>
+	{% endfor %}
 </div>
 <div id="app">
 </div>

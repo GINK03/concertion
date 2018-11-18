@@ -5,7 +5,9 @@ from datetime import *
 import json
 import time
 import schedule
-
+from hashlib import sha256
+from bs4 import BeautifulSoup as BS
+import gzip
 def job():
 	url_score = {}
 	now = datetime.now()
@@ -31,13 +33,32 @@ def job():
 		url_score[url] = reaction_count
 
 	url_score = [(url,score) for url,score in url_score.items()]
-	url_score = sorted(url_score, key=lambda x:x[1]*-1)[100:]
+	url_score = sorted(url_score, key=lambda x:x[1]*-1)[:100]
 
 	url_score = {url:score for url, score in url_score}
+
 	ser = json.dumps(url_score, indent=2, ensure_ascii=False)
 	print(ser)
 	open('pre_calculated_jsons/default_facebook_scores.json', 'w').write(ser)
-
+		
+	# urlのtitle descをパース
+	url_datum = {}
+	for url, score in url_score.items():
+		hashed = sha256(bytes(url,'utf8')).hexdigest()
+		if Path(f'./htmls/{hashed}.gz').exists() is False:
+			continue
+		print('ok')
+		try:
+			soup = BS(gzip.decompress(open(f'./htmls/{hashed}.gz', 'rb').read()).decode())
+			h1 = soup.find('div', {'class':'hd'}).find('h1').text.strip()
+			paragraph = soup.find('div', {'class':'paragraph'}).text.strip()
+			print(paragraph)
+			url_datum[url] = {'score':score, 'h1':h1, 'paragraph':paragraph}
+		except Exception as ex:
+			print(ex)
+			continue
+	ser = json.dumps(url_datum, indent=2, ensure_ascii=False)
+	open('pre_calculated_jsons/default_facebook_datum.json', 'w').write(ser)
 job()
 schedule.every(10).minutes.do(job)
 while True:

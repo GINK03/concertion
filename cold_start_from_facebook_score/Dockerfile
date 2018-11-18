@@ -5,7 +5,7 @@ WORKDIR /
 RUN mkdir FB_SCORE
 WORKDIR /FB_SCORE
 RUN conda install gunicorn -y
-RUN mkdir htmls xml_parse darturl_clean facebook_score_v2
+RUN mkdir htmls xml_parse darturl_clean facebook_score_v2 pre_calculated_jsons
 RUN pip install schedule
 COPY ./tokens /FB_SCORE/
 COPY ./*.py /FB_SCORE/

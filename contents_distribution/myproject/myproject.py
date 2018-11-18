@@ -10,8 +10,10 @@ cors = CORS(application, supports_credentials=True, resources={r"/*": {"origins"
 
 @application.route("/")
 def home():
-		r = render_template('home.html')
-		return r
+	data = json.load(fp=open('../../cold_start_from_facebook_score/pre_calculated_jsons/default_facebook_datum.json'))
+	data = [(url, datum) for url, datum in data.items()]
+	r = render_template('home.html', data=data)
+	return r
 
 @application.route("/log", methods=['POST'])
 def log():
