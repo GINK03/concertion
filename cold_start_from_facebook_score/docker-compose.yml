@@ -1,0 +1,16 @@
+version: '3'
+services:
+  scraping-yahoo:
+    build: .
+    volumes:
+     - ./htmls:/FB_SCORE/htmls
+     - ./darturl_clean:/FB_SCORE/darturl_clean
+     - ./facebook_score_v2:/FB_SCORE/facebook_score_v2
+    command: bash -c "python3 00-pooling.py"
+  scraping-facebook:
+    build: .
+    volumes:
+     - ./htmls:/FB_SCORE/htmls
+     - ./darturl_clean:/FB_SCORE/darturl_clean
+     - ./facebook_score_v2:/FB_SCORE/facebook_score_v2
+    command: python3 30-facebook_scores.py --scan
