@@ -36,7 +36,7 @@ def job():
 	url_score = {url:score for url, score in url_score}
 	ser = json.dumps(url_score, indent=2, ensure_ascii=False)
 	print(ser)
-	open('default_facebook_scores.json', 'w').write(ser)
+	open('pre_calculated_jsons/default_facebook_scores.json', 'w').write(ser)
 
 job()
 schedule.every(10).minutes.do(job)

@@ -14,3 +14,11 @@ services:
      - ./darturl_clean:/FB_SCORE/darturl_clean
      - ./facebook_score_v2:/FB_SCORE/facebook_score_v2
     command: python3 30-facebook_scores.py --scan
+  calculate-facebook:
+    build: .
+    volumes:
+     - ./htmls:/FB_SCORE/htmls
+     - ./darturl_clean:/FB_SCORE/darturl_clean
+     - ./facebook_score_v2:/FB_SCORE/facebook_score_v2
+     - ./pre_calculated_jsons:/FB_SCORE/pre_calculated_jsons
+    command: python3 P01-make-publish-data.py
