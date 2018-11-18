@@ -13,7 +13,11 @@ import random
 def graph_access(url, acc, obj=None):
 	query = f'https://graph.facebook.com/?id={url}&fields=og_object{{engagement}},engagement&access_token={acc}'
 	r			= requests.get(query)
-	fb_obj	 = json.loads(r.text)
+	try:
+		fb_obj	 = json.loads(r.text)
+	except Exception as ex:
+		print(ex)
+		return
 	tdatetime = datetime.datetime.now()
 	eval_time = tdatetime.strftime('%Y-%m-%d %H:%M:%S')
 	
