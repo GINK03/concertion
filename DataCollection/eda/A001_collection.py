@@ -16,7 +16,7 @@ TABLE DEFINITIONS
 }
 '''
 
-args = [[i] for i in reversed(range(1200000, 1342230))]
+args = [[i] for i in reversed(range(1200000, 1360507))]
 keys = [i[0]%16 for i in args]
 df = pd.DataFrame({'arg':args, 'key':keys}).groupby(by=['key']).sum().reset_index()
 args = df.to_dict('records')

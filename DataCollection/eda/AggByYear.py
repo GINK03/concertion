@@ -7,7 +7,7 @@ def filter_no_time(x):
         return True
     else:
         return False
-
+print(len(df))
 df = df[df['PUB_DATE'].apply(filter_no_time)]
 df['YEAR'] = df['PUB_DATE'].apply(lambda x:str(x).split('-')[0])
 df['MONTH'] = df['PUB_DATE'].apply(lambda x:str(x).split('-')[1])

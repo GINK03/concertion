@@ -25,13 +25,16 @@ def pmap(arg):
                     decode=pickle.loads)
     objs = []
     random.shuffle(urls)
+    db_b = SqliteDict('db_b.sqlite', encode=pickle.dumps,
+                 decode=pickle.loads, autocommit=True)
     for idx, url in enumerate(urls):
         val = db[url]
         if val.get('DELETED') is None:
             continue
         if val['DELETED'] is True:
             continue
-
+        if db_b.get(url) is not None:
+            continue
         HTMLS = val['HTMLS']
         soup = bs4.BeautifulSoup(HTMLS[-1]['HTML'])
         parse_date = HTMLS[-1]['DATE']
@@ -44,17 +47,18 @@ def pmap(arg):
                 [t.text for t in soup.find_all('div', {'class': 'tweet'})])
             obj = {'PUB_DATE': pub_date, 'TITLE': title,
                     'TWEET': tweets, 'ICON_VIEW': icon_view, 'URL': url, 'TAGS':json.dumps(tags, ensure_ascii=False)}
-            # print(obj)
-            objs.append(obj)
+            db_b[url] = obj
             print(idx, len(urls), url)
+            
         except Exception as ex:
             print(ex, url)
-    return objs
-
+    del db_b
 
 #[pmap(arg) for arg in args]
 objs = []
 with PPE(max_workers=16) as exe:
-    for objs_ in exe.map(pmap, args):
-        objs += objs_
-pd.DataFrame(objs).to_csv('local.csv', index=None)
+    exe.map(pmap, args)
+db = SqliteDict('db_b.sqlite', encode=pickle.dumps,
+         decode=pickle.loads)
+
+pd.DataFrame(list(db.values())).to_csv('local.csv', index=None)
