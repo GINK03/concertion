@@ -11,26 +11,53 @@
     margin: 0 auto;
     background-color: #f2f2f2;
 }
-.fb_score {
+.datetime {
     width: 200px;
-		font-size: 70%;
-		color: white;
-    background-color: #002699;
+    font-size: 120%;
+    color: white;
+    background-color: lightgreen;
+}
+.links {
+    font-size: 100%;
+    color: black;
+    background-color: #FFFFFF;
+}
+.score {
+    font-size: 50%;
+    color: green;
+    background-color: #DDDDDD;
+}
+.tag {
+    font-size: 50%;
+    color: orange; 
+    background-color: #DDDDDD;
 }
 .shrink_text {
 		font-size: 70%;
 		color: black;
 }
+    .blacks { 
+        color: black;
+    }
 </style>
 </head>
 <body>
-
+    <div>
+        <a href=/month>月粒度</a>  <a href=/days>日粒度</a>
+    </div>
 <div id="rankings">
-	{% for url, datum in data %}	
-		<div class="facebook" align="left"> 
-			<a target="_blank" href={{ url }}> {{ datum.h1 }} </a>
-			<div class="fb_score"> Facebookスコア  {{ datum.score }} </div>
-			<div class="shrink_text"> {{ datum.paragraph[:200] + '...' }} </div>
+	{% for particle, data in particle_data %}	
+		<div class="togetter-fraction" align="left"> 
+            <div class="datetime"> {{ particle_name }} {{ particle }} </div>
+            {% for datum in data %}
+            <div class="links"> 
+                <a class="blacks" href={{ datum.URL }} target="_blank"> {{ datum.TITLE }} </a> 
+                <span class="score"> {{ datum.ICON_VIEW }} views</span>
+                {% for TAG in datum.TAGS %}
+                <a class="tag" href=/{{ particle_name }}/{{ TAG }}>{{ TAG }}</a></span><span> </span>
+                {% endfor %}
+            </div>
+			{% endfor %}
 		</div>
 	{% endfor %}
 </div>
