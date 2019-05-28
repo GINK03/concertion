@@ -37,55 +37,5 @@
 <div id="app">
 </div>
 
-<script type="text/babel">
-class Toggle extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {isToggleOn: true};
-    // This binding is necessary to make `this` work in the callback
-    this.handleClick = this.handleClick.bind(this);
-  }
-  handleClick() {
-    this.setState(state => ({
-      isToggleOn: !state.isToggleOn
-    }));
-  }
-  render() {
-    return (
-      <button onClick={this.handleClick}>
-        {this.state.isToggleOn ? 'ON' : 'OFF'}
-      </button>
-    );
-  }
-}
-ReactDOM.render(
-  <Toggle />,
-  document.getElementById('app')
-);
-</script>
-
-<script>
-$.ajaxSetup({
-    type: "POST",
-    data: {},
-    dataType: 'json',
-    xhrFields: {
-       withCredentials: true
-    },
-    crossDomain: true,
-    contentType: 'application/json; charset=utf-8'
-});
-$.ajax({
-        url: 'http://192.168.20.33:7000/log',
-        type: 'POST',
-        contentType: 'application/json',
-        datatype: 'json',
-        data: '{"data":"tata"}'
-    }).done(function(data) {
-        console.log(data);
-    }).fail(function(err) {
-        console.log(err);
-    });
-</script>
 </body>
 </html>
