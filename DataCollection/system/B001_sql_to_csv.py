@@ -22,8 +22,8 @@ def pmap(arg):
             continue
         if val['DELETED'] is True:
             continue
-        if db_b.get(url) is not None:
-            continue
+        #if db_b.get(url) is not None:
+        #    continue
         HTMLS = val['HTMLS']
         soup = bs4.BeautifulSoup(HTMLS[-1]['HTML'])
         parse_date = HTMLS[-1]['DATE']
