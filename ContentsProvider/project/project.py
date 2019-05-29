@@ -8,7 +8,7 @@ import pandas as pd
 from collections import namedtuple
 application = Flask(__name__)
 
-LOCAL_CSV = pd.read_csv('../../DataCollection/eda/local.csv')
+LOCAL_CSV = pd.read_csv('../../DataCollection/system/local.csv')
 df = LOCAL_CSV.copy()
 
 def filter_no_time(x):
