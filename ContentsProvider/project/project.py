@@ -23,7 +23,10 @@ def load_json(x):
     except:
         return None
 
+df['PARSED_DATE'] = df['PUB_DATE'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d', errors='ignore'))
+df = df[pd.notnull(df['PARSED_DATE'])]
 df = df[df['PUB_DATE'].apply(filter_no_time)]
+df['YEAR_WEEK_NUMBER'] = df['PARSED_DATE'].apply(lambda x:x.strftime('%Y %V'))
 df['ICON_VIEW'] = df['ICON_VIEW'].apply(lambda x:int(x))
 df['TAGS'] = df['TAGS'].apply(load_json)
 df = df[pd.notnull(df['TAGS'])]
@@ -35,6 +38,7 @@ df['YEAR_MONTH'] = df['PUB_DATE'].apply(
     lambda x: '-'.join(str(x).split('-')[0:2]))
 df['YEAR_MONTH_DAY'] = df['PUB_DATE'].apply(
     lambda x: '-'.join(str(x).split('-')[0:3]))
+#df['YEAR_WEEK_NUMBER'] = pd.to_datetime(df['PUB_DATE'], format='%Y-%m-%d').dt.strftime('%Y, %V')
 
 def get_particle_data(PARTICLE_NAME='YEAR_MONTH', KEYWORD=None):
     Data = namedtuple('Data', ['URL', 'TITLE', 'ICON_VIEW', 'TAGS'])
@@ -73,6 +77,18 @@ def days():
 def days_keyword(KEYWORD):
     particle_data = get_particle_data(PARTICLE_NAME='YEAR_MONTH_DAY', KEYWORD=KEYWORD)
     r = render_template('home.html', particle_name='days', particle_data=particle_data)
+    return r
+
+@application.route("/week")
+def week():
+    particle_data = get_particle_data(PARTICLE_NAME='YEAR_WEEK_NUMBER')
+    r = render_template('home.html', particle_name='week', particle_data=particle_data)
+    return r
+
+@application.route("/week/<KEYWORD>")
+def week_keyword(KEYWORD):
+    particle_data = get_particle_data(PARTICLE_NAME='YEAR_WEEK_NUMBER', KEYWORD=KEYWORD)
+    r = render_template('home.html', particle_name='week', particle_data=particle_data)
     return r
 
 if __name__ == "__main__":
