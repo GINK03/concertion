@@ -55,7 +55,7 @@ def run():
         print('There is any wrong to get latest id.')
         exit(1)
 
-    args = [[i] for i in reversed(range(1200000, int(max_post_id)))]
+    args = [[i] for i in reversed(range(1300000, int(max_post_id)))]
     keys = [i[0]%16 for i in args]
     df = pd.DataFrame({'arg':args, 'key':keys}).groupby(by=['key']).sum().reset_index()
     args = df.to_dict('records')
