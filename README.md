@@ -1,6 +1,11 @@
 # Togetter Backlogs
 Togetterのバックログ（時系列順でみれるという）
 
+## 動作イメージ
+<div align="center">
+  <img width="75%" src="https://user-images.githubusercontent.com/4949982/58526297-79b91500-8209-11e9-99ef-b606197318e3.gif">
+</div>
+
 ## 全体設計
 <div align="center">
   <img width="100%" src="https://user-images.githubusercontent.com/4949982/45913267-519f3800-be6a-11e8-9a18-2fd867700323.png">
