@@ -1,0 +1,6 @@
+schedule==0.6.0
+pandas==0.23.3
+requests==2.18.4
+Flask==1.0.3
+sqlitedict==1.6.0
+beautifulsoup4==4.7.1
