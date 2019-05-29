@@ -14,8 +14,12 @@ def job():
     except Exception as ex:
         print(ex)
 
-schedule.every().hour.do(job)
+#schedule.every().hour.do(job)
+schedule.every().day.at("00:30").do(job)
+schedule.every().day.at("08:30").do(job)
+schedule.every().day.at("16:30").do(job)
 
+job()
 while True:
     schedule.run_pending()
     time.sleep(1)
