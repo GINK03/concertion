@@ -20,27 +20,30 @@ def pmap(arg):
     ii = arg['arg']
     db = SqliteDict('db.sqlite', encode=pickle.dumps, decode=pickle.loads, autocommit=True)
     for i in ii:
-        url = f'https://togetter.com/li/{i}'
-        # DELTEDされていたら取得しない
-        if db.get(url) is not None and db.get(url)['DELETED'] == True:
+        try:
+            url = f'https://togetter.com/li/{i}'
+            # - DELTEDされていたら取得しない
+            if db.get(url) is not None and db.get(url)['DELETED'] == True:
+                continue
+            # - 5回以上スクレイピングされていたら取得しない
+            if db.get(url) is not None and len(db.get(url)['HTMLS']) >= 5:
+                continue
+            r = requests.get(url)
+            soup = bs4.BeautifulSoup(r.text)
+            if soup.find('div', {'class':'alert alert-info'}) is not None:
+                db[url] = {'DELETED':True}
+                continue
+            if db.get(url) is None:
+                db[url] = {'LAST_UPDATE': datetime.datetime.now(), 'HTMLS':[], 'DELETED':False}
+            print(soup.title.text, url)
+            obj = db[url]
+            obj['HTMLS'].append({'DATE':datetime.datetime.now(), 'HTML': r.text})
+            # - Update
+            db[url] = obj
+            db.commit()
+        except Exception as ex:
+            print(ex)
             continue
-        # 5回以上スクレイピングされていたら取得しない
-        if db.get(url) is not None and len(db.get(url)['HTMLS']) >= 5:
-            continue
-        r = requests.get(url)
-        soup = bs4.BeautifulSoup(r.text)
-        if soup.find('div', {'class':'alert alert-info'}) is not None:
-            db[url] = {'DELETED':True}
-            continue
-        if db.get(url) is None:
-            db[url] = {'LAST_UPDATE': datetime.datetime.now(), 'HTMLS':[], 'DELETED':False}
-        print(soup.title.text, url)
-        obj = db[url]
-        obj['HTMLS'].append({'DATE':datetime.datetime.now(), 'HTML': r.text})
-        # update
-        db[url] = obj
-        db.commit()
-
 
 def run():
     '''

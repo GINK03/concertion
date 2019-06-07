@@ -5,15 +5,21 @@ import bs4
 import pandas as pd
 import json
 from concurrent.futures import ProcessPoolExecutor as PPE
+from pathlib import Path
 
-
-
+try:
+    Path('db_b.sqlite').unlink()
+except Exception as ex:
+    print(ex)
+    ...
 def pmap(arg):
     key, urls = arg
     db = SqliteDict('db.sqlite', encode=pickle.dumps,
                     decode=pickle.loads)
     objs = []
-    random.shuffle(urls)
+    #random.shuffle(urls)
+    urls = sorted(urls)[-1000:]
+    #urls
     db_b = SqliteDict('db_b.sqlite', encode=pickle.dumps,
                  decode=pickle.loads, autocommit=True)
     for idx, url in enumerate(urls):
@@ -37,7 +43,7 @@ def pmap(arg):
             obj = {'PUB_DATE': pub_date, 'TITLE': title,
                     'TWEET': tweets, 'ICON_VIEW': icon_view, 'URL': url, 'TAGS':json.dumps(tags, ensure_ascii=False)}
             db_b[url] = obj
-            print(idx, len(urls), url)
+            print(idx, len(urls), url, tags)
             
         except Exception as ex:
             print(ex, url)
@@ -59,6 +65,8 @@ def run():
     objs = []
     with PPE(max_workers=16) as exe:
         exe.map(pmap, args)
+
+    print('finish make db_b, try to build local csv')
     db = SqliteDict('db_b.sqlite', encode=pickle.dumps,
              decode=pickle.loads)
     pd.DataFrame(list(db.values())).to_csv('local.csv', index=None)
