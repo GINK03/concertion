@@ -6,48 +6,47 @@ import pandas as pd
 import json
 from concurrent.futures import ProcessPoolExecutor as PPE
 from pathlib import Path
+import datetime
 
-try:
-    Path('db_b.sqlite').unlink()
-except Exception as ex:
-    print(ex)
-    ...
+Path('tmp').mkdir(exist_ok=True)
+
 def pmap(arg):
     key, urls = arg
-    db = SqliteDict('db.sqlite', encode=pickle.dumps,
-                    decode=pickle.loads)
     objs = []
-    #random.shuffle(urls)
-    urls = sorted(urls)[-1000:]
-    #urls
-    db_b = SqliteDict('db_b.sqlite', encode=pickle.dumps,
-                 decode=pickle.loads, autocommit=True)
-    for idx, url in enumerate(urls):
-        val = db[url]
-        if val.get('DELETED') is None:
-            continue
-        if val['DELETED'] is True:
-            continue
-        #if db_b.get(url) is not None:
-        #    continue
-        HTMLS = val['HTMLS']
-        soup = bs4.BeautifulSoup(HTMLS[-1]['HTML'])
-        parse_date = HTMLS[-1]['DATE']
-        try:
-            tags = [a.text for a in soup.find('span', {'class':'tag_box'}).find_all('a', {'class':'rad_btn tag_type_1'})] 
-            pub_date = soup.find('span', {'class': 'info_date'}).get('content')
-            icon_view = soup.find('span', {'class': 'icon_view'}).text
-            title = soup.title.text
-            tweets = ' '.join(
-                [t.text for t in soup.find_all('div', {'class': 'tweet'})])
-            obj = {'PUB_DATE': pub_date, 'TITLE': title,
-                    'TWEET': tweets, 'ICON_VIEW': icon_view, 'URL': url, 'TAGS':json.dumps(tags, ensure_ascii=False)}
-            db_b[url] = obj
-            print(idx, len(urls), url, tags)
-            
-        except Exception as ex:
-            print(ex, url)
-    del db_b
+    try:
+        db = SqliteDict('db.sqlite', encode=pickle.dumps,
+                        decode=pickle.loads)
+        #random.shuffle(urls)
+        urls = sorted(urls)[-1000:]
+        #urls
+        for idx, url in enumerate(urls):
+            val = db[url]
+            if val.get('DELETED') is None:
+                continue
+            if val['DELETED'] is True:
+                continue
+            #if db_b.get(url) is not None:
+            #    continue
+            HTMLS = val['HTMLS']
+            soup = bs4.BeautifulSoup(HTMLS[-1]['HTML'])
+            parse_date = HTMLS[-1]['DATE']
+            try:
+                tags = [a.text for a in soup.find('span', {'class':'tag_box'}).find_all('a', {'class':'rad_btn tag_type_1'})] 
+                pub_date = soup.find('span', {'class': 'info_date'}).get('content')
+                icon_view = soup.find('span', {'class': 'icon_view'}).text
+                title = soup.title.text
+                tweets = ' '.join(
+                    [t.text for t in soup.find_all('div', {'class': 'tweet'})])
+                obj = {'PUB_DATE': pub_date, 'TITLE': title,
+                        'TWEET': tweets, 'ICON_VIEW': icon_view, 'URL': url, 'TAGS':json.dumps(tags, ensure_ascii=False)}
+                print(key, '@', idx, len(urls), url, tags, datetime.datetime.now())
+                objs.append(obj) 
+            except Exception as ex:
+                print(ex, url)
+    except Exception as ex:
+        print(ex, key)
+
+    return objs 
 
 def run():
     db_ = SqliteDict('db.sqlite', encode=pickle.dumps,
@@ -63,13 +62,12 @@ def run():
     del db_
     #[pmap(arg) for arg in args]
     objs = []
-    with PPE(max_workers=16) as exe:
-        exe.map(pmap, args)
+    with PPE(max_workers=8) as exe:
+        for _objs in exe.map(pmap, args):
+            objs += _objs
 
-    print('finish make db_b, try to build local csv')
-    db = SqliteDict('db_b.sqlite', encode=pickle.dumps,
-             decode=pickle.loads)
-    pd.DataFrame(list(db.values())).to_csv('local.csv', index=None)
+    print('finish make chunked objs, try to build local csv')
+    pd.DataFrame(objs).to_csv('local.csv', index=None)
 
 if __name__ == '__main__':
     run()

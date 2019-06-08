@@ -19,8 +19,9 @@ TABLE DEFINITIONS
 def pmap(arg):
     ii = arg['arg']
     db = SqliteDict('db.sqlite', encode=pickle.dumps, decode=pickle.loads, autocommit=True)
-    for i in ii:
+    for idx, i in enumerate(ii):
         try:
+            print('now deal with', idx, len(ii))
             url = f'https://togetter.com/li/{i}'
             # - DELTEDされていたら取得しない
             if db.get(url) is not None and db.get(url)['DELETED'] == True:
@@ -35,7 +36,7 @@ def pmap(arg):
                 continue
             if db.get(url) is None:
                 db[url] = {'LAST_UPDATE': datetime.datetime.now(), 'HTMLS':[], 'DELETED':False}
-            print(soup.title.text, url)
+            print(soup.title.text, url, datetime.datetime.now())
             obj = db[url]
             obj['HTMLS'].append({'DATE':datetime.datetime.now(), 'HTML': r.text})
             # - Update
@@ -58,7 +59,7 @@ def run():
         print('There is any wrong to get latest id.')
         exit(1)
 
-    args = [[i] for i in reversed(range(1300000, int(max_post_id)))]
+    args = [[i] for i in reversed(range(int(max_post_id) - 10000 * 5, int(max_post_id)))]
     keys = [i[0]%16 for i in args]
     df = pd.DataFrame({'arg':args, 'key':keys}).groupby(by=['key']).sum().reset_index()
     args = df.to_dict('records')

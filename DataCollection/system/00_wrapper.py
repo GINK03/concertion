@@ -4,13 +4,14 @@ import time
 import A001_collection
 import B001_sql_to_csv
 import C001_check_tag_freq
-
+from datetime import datetime
 def job():
     #print("I'm working...")
     try:
         A001_collection.run()
         B001_sql_to_csv.run()
         C001_check_tag_freq.run()
+        print('last', datetime.now()) 
     except Exception as ex:
         print(ex)
 
