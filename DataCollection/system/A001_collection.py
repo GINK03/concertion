@@ -2,66 +2,50 @@ import requests
 import bs4
 import json
 import pickle
-from sqlitedict import *
 import datetime
 from concurrent.futures import ProcessPoolExecutor as PPE
 import itertools
 import pandas as pd
 import re
-'''
-TABLE DEFINITIONS
-{
-    'LAST_UPDATE': datetime,
-    'HTMLS': [{'DATE':datetime, 'HTML':html }],
-    'DELETED':boolean,
-}
-'''
+from hashlib import sha256
+import pickle
+import gzip
+from pathlib import Path
+from FSDB import *
 def pmap(arg):
     ii = arg['arg']
-    db = SqliteDict('db.sqlite', encode=pickle.dumps, decode=pickle.loads, autocommit=True)
     for idx, i in enumerate(ii):
         try:
             print('now deal with', idx, len(ii))
             url = f'https://togetter.com/li/{i}'
             # - DELTEDされていたら取得しない
-            if db.get(url) is not None and db.get(url)['DELETED'] == True:
+            if is_deleted(url):
                 continue
             # - 5回以上スクレイピングされていたら取得しない
-            if db.get(url) is not None and len(db.get(url)['HTMLS']) >= 5:
+            if is_over_5times(url):
                 continue
             r = requests.get(url)
             soup = bs4.BeautifulSoup(r.text)
             if soup.find('div', {'class':'alert alert-info'}) is not None:
-                db[url] = {'DELETED':True}
+                save(url, {'DELETED':True})
                 continue
-            if db.get(url) is None:
-                db[url] = {'LAST_UPDATE': datetime.datetime.now(), 'HTMLS':[], 'DELETED':False}
+            if not Path(get_hashed_fs(url)).exists():
+                save(url, {'LAST_UPDATE': datetime.datetime.now(), 'HTMLS':[], 'DELETED':False})
             print(soup.title.text, url, datetime.datetime.now())
-            obj = db[url]
-            obj['HTMLS'].append({'DATE':datetime.datetime.now(), 'HTML': r.text})
-            # - Update
-            db[url] = obj
-            db.commit()
+            update_html(url, {'DATE':datetime.datetime.now(), 'HTML': r.text})
         except Exception as ex:
             print(ex)
-            continue
+
 
 def run():
-    '''
-    最も最近に投稿されたまとめから最大値を逆算する
-    '''
-    r = requests.get('https://togetter.com/recent')
-    thumbs = bs4.BeautifulSoup(r.text, 'lxml').find('div', {'class':'topics_box'}).find_all('a', {'class':'thumb'})
-    thumb = thumbs[0]
-    max_url = thumb.get('href')
-    max_post_id = re.search(r'https://togetter.com/li/(.*?$)', max_url).group(1)
-    if max_post_id.isdigit() is False:
-        print('There is any wrong to get latest id.')
-        exit(1)
-
+    max_post_id = get_seeds()
     args = [[i] for i in reversed(range(int(max_post_id) - 10000 * 5, int(max_post_id)))]
     keys = [i[0]%16 for i in args]
     df = pd.DataFrame({'arg':args, 'key':keys}).groupby(by=['key']).sum().reset_index()
     args = df.to_dict('records')
+    print(args)
+    #[pmap(arg) for arg in args]
     with PPE(max_workers=16) as exe:
         exe.map(pmap, args)
+if __name__ == '__main__':
+    run()
