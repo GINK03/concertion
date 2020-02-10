@@ -2,17 +2,20 @@
 import schedule
 import time
 import os
-'''
-rootで動作されることを期待している
-'''
+from pathlib import Path
+
+TOP_FOLDER = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parent
+
 def job():
     try:
         # stop gunicorn and reboot
-        os.system('pkill gunicorn')    
+        os.system('pkill gunicorn')
         time.sleep(10)
-        os.system('sh run_gunicorn.sh')
+        os.system(f'gunicorn -w 4 --bind 0.0.0.0:8000 --chdir {HERE}/project wsgi')
     except Exception as ex:
         print(ex)
+
 
 schedule.every().day.at("04:30").do(job)
 schedule.every().day.at("12:30").do(job)

@@ -12,6 +12,8 @@ import pickle
 import gzip
 from pathlib import Path
 from FSDB import *
+import time
+
 def pmap(arg):
     ii = arg['arg']
     for idx, i in enumerate(ii):
@@ -24,8 +26,9 @@ def pmap(arg):
             # - 5回以上スクレイピングされていたら取得しない
             if is_over_5times(url):
                 continue
-            r = requests.get(url)
-            soup = bs4.BeautifulSoup(r.text)
+            with requests.get(url) as r:
+                soup = bs4.BeautifulSoup(r.text, 'html5lib')
+            time.sleep(1)
             if soup.find('div', {'class':'alert alert-info'}) is not None:
                 save(url, {'DELETED':True})
                 continue
@@ -38,14 +41,17 @@ def pmap(arg):
 
 
 def run():
+    print(f'start {__file__}.')
     max_post_id = get_seeds()
-    args = [[i] for i in reversed(range(int(max_post_id) - 10000 * 5, int(max_post_id)))]
-    keys = [i[0]%16 for i in args]
+    print(f'finish get_seed {__file__}.')
+    NUM = 8
+    args = [[i] for i in reversed(range(int(max_post_id) - 10000 * 1, int(max_post_id)))]
+    keys = [i[0]%NUM for i in args]
     df = pd.DataFrame({'arg':args, 'key':keys}).groupby(by=['key']).sum().reset_index()
     args = df.to_dict('records')
     print(args)
     #[pmap(arg) for arg in args]
-    with PPE(max_workers=16) as exe:
+    with PPE(max_workers=NUM) as exe:
         exe.map(pmap, args)
 if __name__ == '__main__':
     run()

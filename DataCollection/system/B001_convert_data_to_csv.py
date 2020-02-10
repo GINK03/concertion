@@ -7,7 +7,9 @@ from concurrent.futures import ProcessPoolExecutor as PPE
 from pathlib import Path
 import datetime
 from FSDB import *
-Path('tmp').mkdir(exist_ok=True)
+
+HERE = Path(__file__).resolve().parent
+Path(f'{HERE}/var').mkdir(exist_ok=True)
 
 def pmap(arg):
     key, urls = arg
@@ -60,7 +62,7 @@ def run():
             objs += _objs
 
     print('finish make chunked objs, try to build local csv')
-    pd.DataFrame(objs).to_csv('local.csv', index=None)
+    pd.DataFrame(objs).to_csv(f'{HERE}/var/local.csv', index=None)
 
 if __name__ == '__main__':
     run()

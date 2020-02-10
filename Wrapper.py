@@ -5,13 +5,15 @@ import os
 
 
 def DataCollectorDriver():
-    os.system('cd DataCollection/system && python3 00_wrapper.py')
+    os.system('python3 DataCollection/system/00_wrapper.py')
 def ContentsProviderDriver():
-    os.system('cd ContentsProvider && python3 00_wrapper.py')
-def Master(func):
+    os.system('python3 ContentsProvider/00_wrapper.py')
+
+# 関数をバイパスして、実行するだけ
+def Driver(func):
     func()
 
 if __name__ == '__main__':
     funcs = [DataCollectorDriver, ContentsProviderDriver]
     with PPE(max_workers=16) as exe:
-        exe.map(Master, funcs)
+        exe.map(Driver, funcs)

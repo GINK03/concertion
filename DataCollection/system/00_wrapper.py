@@ -1,15 +1,23 @@
 
 import schedule
 import time
-import A001_collection
-import B001_sql_to_csv
-import C001_check_tag_freq
+from pathlib import Path
 from datetime import datetime
+import sys
+try:
+    HERE = Path(__file__).resolve().parent
+    sys.path.append(f'{HERE}')
+    import A001_collection
+    import B001_convert_data_to_csv
+    import C001_check_tag_freq
+except Exception as exc:
+    raise Exception(exc)
+
 def job():
     #print("I'm working...")
     try:
         A001_collection.run()
-        B001_sql_to_csv.run()
+        B001_convert_data_to_csv.run()
         C001_check_tag_freq.run()
         print('last', datetime.now()) 
     except Exception as ex:

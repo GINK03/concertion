@@ -1,4 +1,6 @@
 version: '3'
 services:
-  secession-prediction:
+  togetter-backlogs:
     build: .
+    ports:
+      - 8000:8000
