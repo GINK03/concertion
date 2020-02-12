@@ -10,7 +10,7 @@ from collections import namedtuple
 TOP_FOLDER = Path(__file__).resolve().parent.parent.parent
 application = Flask(__name__)
 
-LOCAL_CSV = pd.read_csv(f'{TOP_FOLDER}/DataCollection/system/var/local.csv')
+LOCAL_CSV = pd.read_csv(f'{TOP_FOLDER}/var/TB/local.csv')
 df = LOCAL_CSV.copy()
 
 

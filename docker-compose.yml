@@ -2,5 +2,13 @@ version: '3'
 services:
   togetter-backlogs:
     build: .
+    user: gimpei
     ports:
-      - 8000:8000
+      - 8001:8000
+    volumes:
+      - ~/.config:/home/gimpei/.config
+      - ~/.ssh:/home/gimpei/.ssh
+      - ~/.cache:/home/gimpei/.cache
+        #command: bash
+    privileged: true
+

@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: togetter-backlog
+spec:
+  selector:
+    matchLabels:
+      run: togetter-backlog
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: togetter-backlog
+    spec:
+      containers:
+      - name: togetter-backlog
+        image: 192.168.30.12:5000/togetter-backlog
+        #command: ["python3", "-c", "import time;[time.sleep(1) for i in range(10**10)]"]
+        ports:
+        - containerPort: 8000

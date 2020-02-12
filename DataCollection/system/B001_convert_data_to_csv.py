@@ -9,7 +9,9 @@ import datetime
 from FSDB import *
 
 HERE = Path(__file__).resolve().parent
-Path(f'{HERE}/var').mkdir(exist_ok=True)
+TOP_FOLDER = Path(__file__).resolve().parent.parent.parent
+
+Path(f'{TOP_FOLDER}/var/TB').mkdir(exist_ok=True)
 
 def pmap(arg):
     key, urls = arg
@@ -62,7 +64,7 @@ def run():
             objs += _objs
 
     print('finish make chunked objs, try to build local csv')
-    pd.DataFrame(objs).to_csv(f'{HERE}/var/local.csv', index=None)
+    pd.DataFrame(objs).to_csv(f'{TOP_FOLDER}/var/TB/local.csv', index=None)
 
 if __name__ == '__main__':
     run()

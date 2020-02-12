@@ -18,7 +18,6 @@ def pmap(arg):
     ii = arg['arg']
     for idx, i in enumerate(ii):
         try:
-            print('now deal with', idx, len(ii))
             url = f'https://togetter.com/li/{i}'
             # - DELTEDされていたら取得しない
             if is_deleted(url):
@@ -28,10 +27,12 @@ def pmap(arg):
                 continue
             with requests.get(url) as r:
                 soup = bs4.BeautifulSoup(r.text, 'html5lib')
-            time.sleep(1)
             if soup.find('div', {'class':'alert alert-info'}) is not None:
                 save(url, {'DELETED':True})
                 continue
+            print('now deal with', idx, len(ii))
+            time.sleep(1)
+            
             if not Path(get_hashed_fs(url)).exists():
                 save(url, {'LAST_UPDATE': datetime.datetime.now(), 'HTMLS':[], 'DELETED':False})
             print(soup.title.text, url, datetime.datetime.now())

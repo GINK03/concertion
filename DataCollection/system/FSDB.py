@@ -17,12 +17,13 @@ import pandas as pd
 import re
 
 HERE = Path(__file__).resolve().parent
-Path(f'{HERE}/var/downloads').mkdir(exist_ok=True, parents=True)
+TOP_FOLDER = Path(__file__).resolve().parent.parent.parent
 
+Path(f'{TOP_FOLDER}/var/TB/downloads').mkdir(exist_ok=True, parents=True)
 
 def get_hashed_fs(url):
     hashed = sha256(bytes(url, 'utf8')).hexdigest()[:16]
-    fn = f'{HERE}/var/downloads/{hashed}'
+    fn = f'{TOP_FOLDER}/var/TB/downloads/{hashed}'
     return fn
 
 
