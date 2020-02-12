@@ -6,9 +6,15 @@ RUN apt update
 RUN apt install build-essential -y
 RUN apt install sshfs htop git make sudo vim tmux less -y
 
+
 # add normal user
 RUN useradd -ms /bin/bash gimpei
 RUN chown -R gimpei /app
+
+# add sshfs functions
+RUN groupadd fuse
+RUN usermod -aG fuse gimpei
+RUN echo 'user_allow_other' > /etc/fuse.conf 
 
 # language settings
 RUN apt install locales -y

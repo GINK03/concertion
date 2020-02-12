@@ -3,6 +3,9 @@ from concurrent.futures import ProcessPoolExecutor as PPE
 import os
 from os import environ as E
 import time
+from subprocess import Popen
+from subprocess import PIPE
+
 HOME = E['HOME']
 
 if E.get('MOUNT_HOST'):
@@ -22,9 +25,10 @@ def ContentsProviderDriver():
 
 def SshfsMount():
     while True:
-        CMD = f'sshfs {MOUNT_HOST}:{HOME}/{DISK}/var var -o IdentityFile={HOME}/.ssh/id_github -o StrictHostKeyChecking=no -p {PORT} -o nonempty 2>&1 >/dev/null'
-        os.system(CMD)
-        time.sleep(10)
+        CMD = f'sshfs {MOUNT_HOST}:{HOME}/{DISK}/var var -o IdentityFile={HOME}/.ssh/id_github -o StrictHostKeyChecking=no -p {PORT} -o nonempty'
+        with Popen(CMD, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE) as proc:
+            proc.communicate()
+        time.sleep(60)
 
 # 関数をバイパスして、実行するだけ
 def Driver(func):

@@ -11,4 +11,5 @@ services:
       - ~/.cache:/home/gimpei/.cache
         #command: bash
     privileged: true
-
+    devices:
+      - /dev/fuse:/dev/fuse
