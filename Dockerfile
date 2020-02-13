@@ -6,10 +6,11 @@ RUN apt update
 RUN apt install build-essential -y
 RUN apt install sshfs htop git make sudo vim tmux less -y
 
-
 # add normal user
 RUN useradd -ms /bin/bash gimpei
 RUN chown -R gimpei /app
+RUN adduser gimpei sudo
+RUN echo "gimpei:gimpei" | chpasswd
 
 # add sshfs functions
 RUN groupadd fuse

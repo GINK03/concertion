@@ -1,15 +1,18 @@
 version: '3'
+
 services:
   togetter-backlogs:
     build: .
     user: gimpei
     ports:
-      - 8001:8000
+        - 8000:8000
     volumes:
-      - ~/.config:/home/gimpei/.config
-      - ~/.ssh:/home/gimpei/.ssh
-      - ~/.cache:/home/gimpei/.cache
+        - ~/.config:/home/gimpei/.config
+        - ~/.ssh:/home/gimpei/.ssh
+        - ~/.cache:/home/gimpei/.cache
         #command: bash
     privileged: true
     devices:
-      - /dev/fuse:/dev/fuse
+        - /dev/fuse:/dev/fuse
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
