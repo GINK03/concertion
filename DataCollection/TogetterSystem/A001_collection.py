@@ -26,7 +26,7 @@ def pmap(arg):
             if is_over_5times(url):
                 continue
             with requests.get(url) as r:
-                soup = bs4.BeautifulSoup(r.text, 'html5lib')
+                soup = bs4.BeautifulSoup(r.text, 'lxml')
             if soup.find('div', {'class':'alert alert-info'}) is not None:
                 save(url, {'DELETED':True})
                 continue
@@ -45,12 +45,11 @@ def run():
     print(f'start {__file__}.')
     max_post_id = get_seeds()
     print(f'finish get_seed {__file__}.')
-    NUM = 8
-    args = [[i] for i in reversed(range(int(max_post_id) - 10000 * 1, int(max_post_id)))]
+    NUM = 32
+    args = [[i] for i in reversed(range(int(max_post_id) - 10000 * 50, int(max_post_id)))]
     keys = [i[0]%NUM for i in args]
     df = pd.DataFrame({'arg':args, 'key':keys}).groupby(by=['key']).sum().reset_index()
     args = df.to_dict('records')
-    print(args)
     #[pmap(arg) for arg in args]
     with PPE(max_workers=NUM) as exe:
         exe.map(pmap, args)

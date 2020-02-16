@@ -43,7 +43,7 @@ def is_over_5times(url):
     if not Path(fn).exists():
         return False
     obj = pickle.loads(gzip.decompress(open(fn, 'rb').read()))
-    if len(obj['HTMLS']) >= 5:
+    if len(obj['HTMLS']) >= 3:
         return True
     else:
         return False
@@ -54,9 +54,14 @@ def save(url, obj):
     # if not Path(fn).exists():
     open(fn, 'wb').write(gzip.compress(pickle.dumps(obj)))
 
+def delete(url):
+    fn = get_hashed_fs(url)
+    Path(fn).unlink()
 
 def get(url):
     fn = get_hashed_fs(url)
+    if not Path(fn).exists():
+        return None
     obj = pickle.loads(gzip.decompress(open(fn, 'rb').read()))
     return obj
 
@@ -91,7 +96,6 @@ def get_seeds():
         'referer': 'https://www.google.com/'
     }
     r = requests.get('https://togetter.com/recent', headers=headers)
-    print('aa')
     thumbs = bs4.BeautifulSoup(r.text, 'lxml').find('div', {'class': 'topics_box'}).find_all('a', {'class': 'thumb'})
     thumb = thumbs[0]
     max_url = thumb.get('href')

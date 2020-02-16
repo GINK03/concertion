@@ -1,3 +1,5 @@
+import gzip
+import pickle
 from flask import Flask, request, jsonify, render_template, make_response
 import json
 import requests
@@ -6,104 +8,77 @@ from datetime import datetime
 from hashlib import sha256
 import pandas as pd
 from collections import namedtuple
-
+import sys
 TOP_FOLDER = Path(__file__).resolve().parent.parent.parent
 application = Flask(__name__)
 
-LOCAL_CSV = pd.read_csv(f'{TOP_FOLDER}/var/TB/local.csv')
-df = LOCAL_CSV.copy()
+try:
+    sys.path.append(f'{TOP_FOLDER}')
+    from Web import Base64EncodeDecode
+    from Web import GenerateDailyRankingList
+    from Web import GetDay
+    from Web import AdhocYJHtmlReplace
+    from Web.Structures import DayAndPath
+    from Web import Hostname
+except Exception as exc:
+    print(exc)
+    raise Exception(exc)
 
-
-def filter_no_time(x):
-    x = str(x)
-    if len(x.split('-')) == 3:
-        return True
-    else:
-        return False
-
-
-def load_json(x):
-    try:
-        return json.loads(x)
-    except:
-        return None
-
-
-df['PARSED_DATE'] = df['PUB_DATE'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d', errors='ignore'))
-df = df[pd.notnull(df['PARSED_DATE'])]
-df = df[df['PUB_DATE'].apply(filter_no_time)]
-df['YEAR_WEEK_NUMBER'] = df['PARSED_DATE'].apply(lambda x: x.strftime('%Y %V'))
-df['ICON_VIEW'] = df['ICON_VIEW'].apply(lambda x: int(x))
-df['TAGS'] = df['TAGS'].apply(load_json)
-df = df[pd.notnull(df['TAGS'])]
-
-df['TITLE'] = df['TITLE'].apply(lambda x: x.replace(' - Togetter', ''))
-df['YEAR'] = df['PUB_DATE'].apply(lambda x: str(x).split('-')[0])
-df['MONTH'] = df['PUB_DATE'].apply(lambda x: str(x).split('-')[1])
-df['YEAR_MONTH'] = df['PUB_DATE'].apply(
-    lambda x: '-'.join(str(x).split('-')[0:2]))
-df['YEAR_MONTH_DAY'] = df['PUB_DATE'].apply(
-    lambda x: '-'.join(str(x).split('-')[0:3]))
-#df['YEAR_WEEK_NUMBER'] = pd.to_datetime(df['PUB_DATE'], format='%Y-%m-%d').dt.strftime('%Y, %V')
-
-
-def get_particle_data(PARTICLE_NAME='YEAR_MONTH', KEYWORD=None):
-    Data = namedtuple('Data', ['URL', 'TITLE', 'ICON_VIEW', 'TAGS'])
-    particle_data = {}
-    if KEYWORD is None:
-        dfTemp = df.copy()
-    else:
-        dfTemp = df[df['TAGS'].apply(lambda x: KEYWORD in x)]
-    for PARTICLE, subDf in dfTemp.groupby(by=[PARTICLE_NAME]):
-        subDf = subDf.sort_values(by=['ICON_VIEW'], ascending=False).head(10)
-        for URL, TITLE, ICON_VIEW, TAGS in zip(subDf['URL'], subDf['TITLE'], subDf['ICON_VIEW'], subDf['TAGS']):
-            if particle_data.get(PARTICLE) is None:
-                particle_data[PARTICLE] = []
-            particle_data[PARTICLE].append(Data(URL=URL, TITLE=TITLE, ICON_VIEW=ICON_VIEW, TAGS=TAGS))
-    return list(reversed(sorted(particle_data.items(), key=lambda x: x[0])))
-
-
+print(Hostname.hostname())
 @application.route("/")
-@application.route("/month")
 def home():
-    particle_data = get_particle_data(PARTICLE_NAME='YEAR_MONTH_DAY')
-    r = render_template('home.html', particle_name='month', particle_data=particle_data)
-    return r
+    return GenerateDailyRankingList.generate_daily_rankin_list_html()
 
 
-@application.route("/month/<KEYWORD>")
-def month_keyword(KEYWORD):
-    particle_data = get_particle_data(PARTICLE_NAME='YEAR_MONTH', KEYWORD=KEYWORD)
-    r = render_template('home.html', particle_name='month', particle_data=particle_data)
-    return r
+@application.route("/get_day/<day>", methods=['GET'])
+def get_day(day):
+    data = Base64EncodeDecode.string_base64_pickle(request.args['serialized'])
+    return GetDay.get_day_html(day, data)
 
 
-@application.route("/days")
-def days():
-    particle_data = get_particle_data(PARTICLE_NAME='YEAR_MONTH_DAY')
-    r = render_template('home.html', particle_name='days', particle_data=particle_data)
-    return r
+@application.route("/gyo")
+def gyo():
+    with open(f'{TOP_FOLDER}/var/Gyo/html') as fp:
+        html = fp.read()
+    return html
 
 
-@application.route("/days/<KEYWORD>")
-def days_keyword(KEYWORD):
-    particle_data = get_particle_data(PARTICLE_NAME='YEAR_MONTH_DAY', KEYWORD=KEYWORD)
-    r = render_template('home.html', particle_name='days', particle_data=particle_data)
-    return r
+@application.route("/gyo2")
+def gyo2():
+    with open(f'{TOP_FOLDER}/var/Gyo/screenshot.png', 'rb') as fp:
+        png = fp.read()
+    response = make_response(png)
+    response.headers.set('Content-Type', 'image/png')
+    return response
 
 
-@application.route("/week")
-def week():
-    particle_data = get_particle_data(PARTICLE_NAME='YEAR_WEEK_NUMBER')
-    r = render_template('home.html', particle_name='week', particle_data=particle_data)
-    return r
+@application.route("/blobs/<digest>", methods=['GET'])
+def blobs(digest):
+    if not Path(f'{TOP_FOLDER}/var/Gyo/blobs/{digest}').exists():
+        return 'ng'
+    
+    with open(f'{TOP_FOLDER}/var/Gyo/blobs/{digest}', 'rb') as fp:
+        data_type = pickle.loads(gzip.decompress(fp.read()))
+    if data_type.type == bytes:
+        response = make_response(data_type.data)
+        response.headers.set('Content-Type', 'image/jpeg')
+        return response
+    elif data_type.type == str:
+        return data_type.data
+    return 'ok'
 
-
-@application.route("/week/<KEYWORD>")
-def week_keyword(KEYWORD):
-    particle_data = get_particle_data(PARTICLE_NAME='YEAR_WEEK_NUMBER', KEYWORD=KEYWORD)
-    r = render_template('home.html', particle_name='week', particle_data=particle_data)
-    return r
+@application.route("/blobs_yj/<digest>", methods=['GET'])
+def blobs_yj(digest):
+    with open(f'{TOP_FOLDER}/var/Gyo/blobs/{digest}', 'rb') as fp:
+        data_type = pickle.loads(gzip.decompress(fp.read()))
+    if data_type.type == bytes:
+        response = make_response(data_type.data)
+        response.headers.set('Content-Type', 'image/jpeg')
+        return response
+    elif data_type.type == str:
+        html = data_type.data
+        return AdhocYJHtmlReplace.yj_html_replace(html, digest)
+    return 'ok'
 
 
 if __name__ == "__main__":
