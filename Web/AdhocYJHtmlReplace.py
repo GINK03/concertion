@@ -13,6 +13,9 @@ except Exception as exc:
     raise Exception(exc)
 def yj_html_replace(html:str, digest:str) -> str:
     soup = BeautifulSoup(html, 'html5lib')
+
+    for a in soup.find('head').find_all('script'):
+        a.decompose()
     soup.find(attrs={'class':'listPaneltype'}).decompose()
     soup.find(attrs={'class':'mainYdn'}).decompose()
     soup.find(attrs={'id':'timeline'}).decompose()

@@ -93,8 +93,7 @@ def fetch_each_categories():
             print(exc)
             continue
 def run():
-    while True:
-        fetch_each_categories()
+    fetch_each_categories()
 
 if __name__ == '__main__':
     run()

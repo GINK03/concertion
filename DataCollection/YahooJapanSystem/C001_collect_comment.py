@@ -104,6 +104,7 @@ def process(arg):
             try:
                 title_url_digest_score = pickle.load(open(file, 'rb'))
             except Exception as exc:
+                Path(file).unlink()
                 print(exc)
                 continue
             url = title_url_digest_score.url
@@ -177,8 +178,7 @@ def process_runner():
 
 
 def run():
-    while True:
-        process_runner()
+    process_runner()
 
 
 if __name__ == '__main__':
