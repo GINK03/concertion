@@ -9,32 +9,57 @@ from hashlib import sha256
 import pandas as pd
 from collections import namedtuple
 import sys
+FILE = Path(__file__).name
 TOP_FOLDER = Path(__file__).resolve().parent.parent.parent
 application = Flask(__name__)
 
 try:
     sys.path.append(f'{TOP_FOLDER}')
     from Web import Base64EncodeDecode
-    from Web import GenerateDailyRankingList
-    from Web import GetDay
+    from Web import GenerateTop
     from Web import AdhocYJHtmlReplace
     from Web.Structures import DayAndPath
     from Web import Hostname
+    
+    from Web import GetDay
+    from Web import GenerateDailyYJAbstracts
 except Exception as exc:
     print(exc)
     raise Exception(exc)
 
-print(Hostname.hostname())
+print(f'[{FILE}] {Hostname.hostname()}')
 @application.route("/")
 def home():
-    return GenerateDailyRankingList.generate_daily_rankin_list_html()
+    return GenerateTop.generate_top()
 
+@application.route('/daily_yj_abstracts/<name>')
+def daily_yj_abstracts(name):
+    return GenerateDailyYJAbstracts.generate_daily_yj_abstracts(name)
 
 @application.route("/get_day/<day>", methods=['GET'])
 def get_day(day):
     data = Base64EncodeDecode.string_base64_pickle(request.args['serialized'])
     return GetDay.get_day_html(day, data)
 
+@application.route("/twitter/<typed>/<digest>")
+def twitter(typed, digest):
+    print(digest)
+    if typed in {'tweet', 'css', 'input'}:
+        with open(f'{TOP_FOLDER}/var/Twitter/{typed}/{digest}') as fp:
+            html = fp.read()
+        return html
+    elif typed in {'jpg', 'jpgs'}:
+        with open(f'{TOP_FOLDER}/var/Twitter/jpgs/{digest}', 'rb') as fp:
+            binary = fp.read()
+        response = make_response(binary)
+        response.headers.set('Content-Type', 'image/jpeg')
+        return response
+    elif typed in {'png', 'pngs'}:
+        with open(f'{TOP_FOLDER}/var/Twitter/pngs/{digest}', 'rb') as fp:
+            binary = fp.read()
+        response = make_response(binary)
+        response.headers.set('Content-Type', 'image/png')
+        return response
 
 @application.route("/gyo")
 def gyo():
@@ -70,7 +95,11 @@ def blobs(digest):
 @application.route("/blobs_yj/<digest>", methods=['GET'])
 def blobs_yj(digest):
     with open(f'{TOP_FOLDER}/var/Gyo/blobs/{digest}', 'rb') as fp:
-        data_type = pickle.loads(gzip.decompress(fp.read()))
+        try:
+            data_type = pickle.loads(gzip.decompress(fp.read()))
+        except EOFError:
+            Path(f'{TOP_FOLDER}/var/Gyo/blobs/{digest}').unlink()
+            return 'ng.'
     if data_type.type == bytes:
         response = make_response(data_type.data)
         response.headers.set('Content-Type', 'image/jpeg')

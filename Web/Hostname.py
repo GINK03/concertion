@@ -1,6 +1,7 @@
 import socket
 import os
 from os import environ as E
+import re
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -21,7 +22,7 @@ def hostname():
         if 'HOSTNAME' in E:
             _hostname = E['HOSTNAME']
         else:
-            _hostname = get_ip() + ':8000'
+            _hostname = 'concertion.page'
     return _hostname
 
 if __name__ == '__main__':

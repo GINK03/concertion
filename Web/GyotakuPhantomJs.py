@@ -16,7 +16,7 @@ import sys
 import gzip
 import pickle
 import re
-
+from inspect import currentframe, getframeinfo
 try:
     FILE = Path(__file__).name
     TOP_FOLDER = Path(__file__).resolve().parent.parent
@@ -68,11 +68,11 @@ def get_children_and_replace_blobs(o_mst: urlparse, html: str, child_url: str, i
         else:
             return html
     except Exception as exc:
-        print(exc)
+        print(f'[{FILE}][{getframeinfo(currentframe).lineno}] {exc}.', file=sys.stderr)
         data_type = DataType(data='error', type=str)
     with open(f'{TOP_FOLDER}/var/Gyo/blobs/{digest}', 'wb') as fp:
         fp.write(gzip.compress(pickle.dumps(data_type)))
-    print(child_url, digest)
+    # print(child_url, digest)
     html = replace_with_digest(html, child_url, digest)
     return html
 
@@ -93,7 +93,7 @@ def gyotaku(url: str):
     # driver.save_screenshot(f"{TOP_FOLDER}/var/Gyo/screenshot.png")
     data_type = DataType(data=html, type=str)
     digest = GetDigest.get_digest(o_mst.geturl())
-    print('transformed', o_mst.geturl(), digest)
+    # print('transformed', o_mst.geturl(), digest)
     with open(f'{TOP_FOLDER}/var/Gyo/blobs/{digest}', 'wb') as fp:
         fp.write(gzip.compress(pickle.dumps(data_type)))
     return digest

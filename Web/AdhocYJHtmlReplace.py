@@ -16,6 +16,10 @@ def yj_html_replace(html:str, digest:str) -> str:
 
     for a in soup.find('head').find_all('script'):
         a.decompose()
+    for a in soup.find('body').find_all('script'):
+        a.decompose()
+    for a in soup.find_all('iframe'):
+        a.decompose()
     soup.find(attrs={'class':'listPaneltype'}).decompose()
     soup.find(attrs={'class':'mainYdn'}).decompose()
     soup.find(attrs={'id':'timeline'}).decompose()

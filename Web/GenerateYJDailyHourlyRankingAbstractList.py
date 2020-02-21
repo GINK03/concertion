@@ -4,6 +4,7 @@ from pathlib import Path
 import glob
 from collections import namedtuple
 import sys
+import datetime
 
 try:
     FILE = Path(__file__)
@@ -29,39 +30,26 @@ def generate_daily_rankin_list():
     return day_and_paths
 
 
-def generate_yj_daily_houry_ranking_list() -> str:
-   
+def generate_yj_daily_houry_ranking_abstract_list() -> str:
     inner = '' 
-    for fn in reversed(sorted(glob.glob(f'{TOP_FOLDER}/var/YJ/ranking_stats/*'))):
-        df = pd.read_csv(fn)
+    top3_latest_fns = list(reversed(sorted(glob.glob(f'{TOP_FOLDER}/var/YJ/ranking_stats/*'))))[:3]
+    for fn in top3_latest_fns:
+        try:
+            df = pd.read_csv(fn)
+        except pd.errors.EmptyDataError:
+            Path(fn).unlink()
+            continue
         name = Path(fn).name
         tmp = ''
-        tmp += f'''<h3>{name}</h3>'''
-        
+        parsed_name = name.replace(".csv", "")
+        renamed_title = datetime.datetime.strptime(parsed_name, "%Y-%m-%d %H").strftime("%Y年%m月%d日 %H時")
+        tmp += f'''<h3>Yahoo News ログ {renamed_title}</h3>'''
+        # max20件に限定する
+        df = df[:15]
         for url, title, category, score in zip(df.url, df.title, df.category, df.score):
-            tmp += f'''<a href="http://{Hostname.hostname()}/blobs_yj/{GetDigest.get_digest(url)}">[{category}] {title}</a>score:{score:0.03f}<br>'''
+            tmp += f'''<a href="https://{Hostname.hostname()}/blobs_yj/{GetDigest.get_digest(url)}">[{category}] {title}</a>score:{score:0.03f}<br>'''
         inner += tmp
     return inner
-
-
-def generate_daily_rankin_list_html():
-    head = '<html><head><title> ranking </title></head>'
-    tail = '</html>'
-    body = ''
-    # yahoo
-    body += '<div class="yj">'
-    body += generate_yj_daily_houry_ranking_list()
-    body += '</div>'
-
-    # togetter
-    day_and_paths: List[DayAndPath] = generate_daily_rankin_list()
-    body += '<div class="togetter">'
-    body += '<p>togetter backlog</p>'
-    for day_and_path in day_and_paths:
-        tmp = f'<a href="http://{Hostname.hostname()}/get_day/{day_and_path.day}?serialized={day_and_path.path}">{day_and_path.day}</a><br>'
-        body += tmp
-    body += "</div>"
-    return head + body + tail
 
 
 if __name__ == '__main__':

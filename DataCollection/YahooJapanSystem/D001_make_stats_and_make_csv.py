@@ -3,6 +3,9 @@ import glob
 from pathlib import Path
 import pickle
 import sys
+from concurrent.futures import ThreadPoolExecutor
+
+from tqdm import tqdm
 FILE = Path(__file__).name
 TOP_FOLDER = Path(__file__).resolve().parent.parent.parent
 try:
@@ -13,23 +16,32 @@ except Exception as exc:
 
 INPUT_FOLDER = f'{TOP_FOLDER}/var/YJ/frequency_watch/'
 
+def process(fn1):
+    try:
+        title_url_digest_score = pickle.load(open(fn1, 'rb'))
+    except Exception as exc:
+        print(f'[{FILE}] {exc}.', file=sys.stderr)
+        Path(fn1).unlink()
+        return None
+    return title_url_digest_score
 
 def run():
-    objs = []
+    args = []
     for fn0 in glob.glob(f'{INPUT_FOLDER}/*'):
         for fn1 in glob.glob(f'{fn0}/*.pkl'):
-            title_url_digest_score = pickle.load(open(fn1, 'rb'))
-            objs.append(title_url_digest_score)
+            args.append(fn1)
+    
+    objs = []
+    with ThreadPoolExecutor(max_workers=32) as exe:
+        for r in tqdm(exe.map(process, args), total=len(args)):
+            if r is None:
+                continue
+            objs.append(r)
 
     df = pd.DataFrame(objs)
 
-    print(df.columns)
-
     objs = []
     for (url, category), sub in df.groupby(by=['url', 'category']):
-        print(url, category, sub.iloc[0].title)
-        print(sub.score.sum())
-        print(sub.date.min())
         obj = {'url': url, 'title':sub.iloc[0].title, 'category': category, 'score': sub.score.sum(), 'first_date': sub.date.min()}
         objs.append(obj)
 
@@ -44,6 +56,15 @@ def run():
         sub = sub.copy()
         sub.sort_values(by=['score'], inplace=True, ascending=False)
         sub.to_csv(f'{OUT_DIR}/{day_hour}.csv', index=None)
+    
+    # デイリー粒度のランキング
+    DAILY_OUT_DIR = f'{TOP_FOLDER}/var/YJ/ranking_stats_daily'
+    Path(DAILY_OUT_DIR).mkdir(exist_ok=True, parents=True)
+    df['yyyy-mm-dd'] = df.first_date.apply(lambda x:x.strftime('%Y-%m-%d'))
+    for day, sub in df.groupby('yyyy-mm-dd'):
+        sub = sub.copy()
+        sub.sort_values(by=['score'], inplace=True, ascending=False)
+        sub.to_csv(f'{DAILY_OUT_DIR}/{day}.csv', index=None)
 
 if __name__ == '__main__':
     run()

@@ -80,6 +80,8 @@ def get_children_and_replace_blobs(o_mst: urlparse, html: str, child_url: str, i
 def gyotaku(url: str, instance_number: int):
     options = Options()
     options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-software-rasterizer")
     options.add_argument("window-size=1024x2024")
     options.add_argument(f"user-data-dir=/tmp/{FILE}_{instance_number:06d}")
     options.binary_location = shutil.which('google-chrome')
