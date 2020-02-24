@@ -15,8 +15,8 @@ except Exception as exc:
 
 def generate_daily_ranking_list() -> str:
     inner = ''
-    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/var/YJ/ranking_stats_daily/*.csv'))): 
-        name = Path(fn).name.replace('.csv', '')
+    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/var/YJ/ranking_stats_daily/*'))): 
+        name = Path(fn).name
         tmp = f'<a href="https://{Hostname.hostname()}/daily_yj_abstracts/{name}">{name}</a><br>'
         inner += tmp
     return inner

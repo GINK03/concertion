@@ -63,8 +63,11 @@ def run():
     df['yyyy-mm-dd'] = df.first_date.apply(lambda x:x.strftime('%Y-%m-%d'))
     for day, sub in df.groupby('yyyy-mm-dd'):
         sub = sub.copy()
-        sub.sort_values(by=['score'], inplace=True, ascending=False)
-        sub.to_csv(f'{DAILY_OUT_DIR}/{day}.csv', index=None)
+        Path(f'{DAILY_OUT_DIR}/{day}').mkdir(exist_ok=True, parents=True)
+        for day_hour, sub2 in df.groupby('yyyy-mm-dd hh'):
+            sub2 = sub2.copy()
+            sub2.sort_values(by=['score'], inplace=True, ascending=False)
+            sub2.to_csv(f'{DAILY_OUT_DIR}/{day}/{day_hour}.csv', index=None)
 
 if __name__ == '__main__':
     run()

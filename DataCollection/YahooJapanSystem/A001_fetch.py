@@ -105,7 +105,7 @@ def fetch_each_categories():
     try:
         with ProcessPoolExecutor(max_workers=32) as exe:
             for ret in tqdm(
-                exe.map(process, args, timeout=180), total=len(args)
+                exe.map(process, args, timeout=360), total=len(args)
             ):
                 ret
     except concurrent.futures._base.TimeoutError as exc:

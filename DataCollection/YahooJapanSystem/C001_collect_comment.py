@@ -112,11 +112,13 @@ def process(arg):
             except Exception as exc:
                 Path(file).unlink()
                 continue
+            if title_url_digest_score.date <= datetime.datetime.now() - datetime.timedelta(days=1):
+                continue
             url = title_url_digest_score.url
 
             out_dir = f'{TOP_FOLDER}/var/YJ/comments/{title_url_digest_score.digest}'
             Path(out_dir).mkdir(exist_ok=True, parents=True)
-            if len(glob.glob(f'{out_dir}/*.pkl')) >= 2:
+            if len(glob.glob(f'{out_dir}/*.pkl')) >= 1:
                 continue
             o = urlparse(url)
             d = QueryToDict.query_to_dict(o.query)
