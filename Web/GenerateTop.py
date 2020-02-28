@@ -19,10 +19,33 @@ except Exception as exc:
     print(exc)
     raise Exception(exc)
 
+def get_buzz_tweet() -> str:
+    from bs4 import BeautifulSoup
+    dir_fn = sorted(glob.glob(f'{TOP_FOLDER}/var/Twitter/tweet/*'))[-1]
+    buzzes = []
+    for idx, fn in enumerate(glob.glob(f'{dir_fn}/*')):
+        html = open(fn).read()
+        soup = BeautifulSoup(html, features='lxml')
+        div = soup.find('body').find('div')
+        if idx%2 == 0:
+            div.find(attrs={'class':'EmbeddedTweet'})['style'] = 'margin-top: 0px;'
+        else:
+            div.find(attrs={'class':'EmbeddedTweet'})['style'] = 'margin-top: 0px;'
+        buzz_ctx = div.__str__()
+        buzz_css = soup.find('body').find('style').__str__()
+        buzzes.append(buzz_ctx + buzz_css)
+    html = '\n'.join(buzzes)
+    return html
+
 def generate_top() -> str:
-    head = '<html><head><title> Concertion Page </title></head>'
+    head = '''<html><head><title> Concertion Page </title>
+    </head>'''
     tail = '</html>'
     body = ''
+    # twitter
+    body += '<div class="twitter">'
+    body += get_buzz_tweet()
+    body += '</div>'
     # yahoo
     body += '<div class="yj">'
     body += GenerateYJDailyHourlyRankingAbstractList.generate_yj_daily_houry_ranking_abstract_list()
@@ -43,3 +66,8 @@ def generate_top() -> str:
     body += "</div>"
     """
     return head + body + tail
+
+
+if __name__ == '__main__':
+    html = get_buzz_tweet()
+    print(html)

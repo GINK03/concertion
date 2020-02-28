@@ -14,7 +14,7 @@ def job():
     Path(f'{TOP_FOLDER}/var/log').mkdir(exist_ok=True, parents=True)
     try:
         # stop gunicorn and reboot
-        os.system('pkill gunicorn')
+        # os.system('pkill gunicorn')
         #time.sleep(10)
         os.system(f'gunicorn -w 4' \
                     f' --bind 0.0.0.0:443' \
@@ -22,8 +22,8 @@ def job():
                     f' --keyfile {HOME}/.var/privkey.pem' \
                     f' --certfile {HOME}/.var/fullchain.pem' \
                     f' --access-logfile {TOP_FOLDER}/var/log/{now}.log')
-    except Exception as ex:
-        print(ex)
+    except Exception as exc:
+        print(exc)
 
 
 def run():

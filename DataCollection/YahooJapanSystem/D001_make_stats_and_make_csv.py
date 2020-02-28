@@ -64,7 +64,7 @@ def run():
     for day, sub in df.groupby('yyyy-mm-dd'):
         sub = sub.copy()
         Path(f'{DAILY_OUT_DIR}/{day}').mkdir(exist_ok=True, parents=True)
-        for day_hour, sub2 in df.groupby('yyyy-mm-dd hh'):
+        for day_hour, sub2 in sub.groupby('yyyy-mm-dd hh'):
             sub2 = sub2.copy()
             sub2.sort_values(by=['score'], inplace=True, ascending=False)
             sub2.to_csv(f'{DAILY_OUT_DIR}/{day}/{day_hour}.csv', index=None)

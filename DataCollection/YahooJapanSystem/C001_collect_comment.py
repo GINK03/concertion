@@ -118,7 +118,7 @@ def process(arg):
 
             out_dir = f'{TOP_FOLDER}/var/YJ/comments/{title_url_digest_score.digest}'
             Path(out_dir).mkdir(exist_ok=True, parents=True)
-            if len(glob.glob(f'{out_dir}/*.pkl')) >= 1:
+            if len(glob.glob(f'{out_dir}/*.pkl')) >= 20:
                 continue
             o = urlparse(url)
             d = QueryToDict.query_to_dict(o.query)
@@ -160,8 +160,16 @@ def process_runner():
     args = []
     cur = 0
     for fn0 in glob.glob(f'{INPUT_FOLDER}/*'):
-        files1 = sorted(glob.glob(f'{fn0}/*.pkl'))
+        files1 = []
+        now = datetime.datetime.now()
+        for file1 in sorted(glob.glob(f'{fn0}/*.pkl')):
+            ts = datetime.datetime.fromtimestamp(Path(file1).stat().st_mtime)
+            if ts > now - datetime.timedelta(minutes=30):
+                files1.append((ts, file1))
+        files1 = sorted(files1, key=lambda x:x[0])[-32:]
+        files1 = [file1 for ts, file1 in files1]
         random.shuffle(files1)
+        print(f'total input file size {len(files1)}')
         for fn1 in files1:
             args.append({'CPU': cur % NUM, 'file': fn1})
             cur += 1
@@ -180,15 +188,11 @@ def process_runner():
         #  with ProcessPoolExecutor(max_workers=NUM) as exe:
         # exe.map(process, args.to_dict('record'), timeout=300)
         ps = []
-        for arg in args.to_dict('record'):
-            p = multiprocessing.Process(target=process, args=(arg,))
-            p.start()
-            ps.append(p)
-        [p.join(60) for p in ps]
-        for p in ps:
-            if p.is_alive():
-                p.terminate()
-            p.join()
+        args = [arg for arg in args.to_dict('record')]
+        print(f'total input data size {len(args)}')
+        with ProcessPoolExecutor(max_workers=NUM) as exe:
+            for ret in exe.map(process, args):
+                ret
     except concurrent.futures._base.TimeoutError as exc:
         print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] {exc}', file=sys.stderr)
         return

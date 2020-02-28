@@ -41,6 +41,20 @@ def get_day(day):
     data = Base64EncodeDecode.string_base64_pickle(request.args['serialized'])
     return GetDay.get_day_html(day, data)
 
+@application.route("/twitter/input/<day>/<digest>")
+def twitter_input(day, digest):
+    print('input', day, digest)
+    with open(f'{TOP_FOLDER}/var/Twitter/input/{day}/{digest}') as fp:
+        html = fp.read()
+    return html
+
+@application.route("/twitter/tweet/<day>/<digest>")
+def twitter_tweet(day, digest):
+    print('tweet', day, digest)
+    with open(f'{TOP_FOLDER}/var/Twitter/tweet/{day}/{digest}') as fp:
+        html = fp.read()
+    return html
+
 @application.route("/twitter/<typed>/<digest>")
 def twitter(typed, digest):
     print(digest)

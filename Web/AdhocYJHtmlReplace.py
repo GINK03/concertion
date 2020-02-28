@@ -14,27 +14,31 @@ except Exception as exc:
 def yj_html_replace(html:str, digest:str) -> str:
     soup = BeautifulSoup(html, 'html5lib')
 
-    for a in soup.find('head').find_all('script'):
-        a.decompose()
-    for a in soup.find('body').find_all('script'):
-        a.decompose()
-    for a in soup.find_all('iframe'):
-        a.decompose()
-    soup.find(attrs={'class':'listPaneltype'}).decompose()
-    soup.find(attrs={'class':'mainYdn'}).decompose()
-    soup.find(attrs={'id':'timeline'}).decompose()
-    soup.find(attrs={'id':'yjSLink'}).decompose()
-    if soup.find(attrs={'class':'ynDetailRelArticle'}) is not None:
-        soup.find(attrs={'class':'ynDetailRelArticle'}).decompose()
-    if soup.find(attrs={'class':'commentBox'}) is not None:
-        soup.find(attrs={'class':'commentBox'}).decompose()
+    try: 
+        for a in soup.find('head').find_all('script'):
+            a.decompose()
+        for a in soup.find('body').find_all('script'):
+            a.decompose()
+        for a in soup.find_all('iframe'):
+            a.decompose()
+        soup.find(attrs={'class':'listPaneltype'}).decompose()
+        soup.find(attrs={'class':'mainYdn'}).decompose()
+        soup.find(attrs={'id':'timeline'}).decompose()
+        soup.find(attrs={'id':'yjSLink'}).decompose()
+        if soup.find(attrs={'class':'ynDetailRelArticle'}) is not None:
+            soup.find(attrs={'class':'ynDetailRelArticle'}).decompose()
+        if soup.find(attrs={'class':'commentBox'}) is not None:
+            soup.find(attrs={'class':'commentBox'}).decompose()
 
-    soup.find(attrs={'id':'contentsFooter'}).decompose()
-    soup.find(attrs={'id':'footer'}).decompose()
-    soup.find(attrs={'class':'stream_title'}).decompose()
-    soup.find(attrs={'id':'contentsHeader'}).decompose()
+        soup.find(attrs={'id':'contentsFooter'}).decompose()
+        soup.find(attrs={'id':'footer'}).decompose()
+        soup.find(attrs={'class':'stream_title'}).decompose()
+        soup.find(attrs={'id':'contentsHeader'}).decompose()
+    except Exception as exc:
+        print(f'[{FILE}] decompose error, {exc}', file=sys.stderr)
     print(f'{TOP_DIR}/var/YJ/comments/{digest}/*')
     comment_html = ''
+    comment_html_below = ''
     fns = sorted(glob.glob(f'{TOP_DIR}/var/YJ/comments/{digest}/*.pkl'))
     if len(fns) == 0:
         comment_html = '誰もコメントしていません'
@@ -56,7 +60,17 @@ def yj_html_replace(html:str, digest:str) -> str:
                         <div class="good-bad">👍x{comment.good} 👎x{comment.bad}</div>
                     </div><br>'''
             comment_html += tmp 
+        
+        for comment in list(reversed(sorted(comments, key=lambda x:x.ts)))[20:]:
+            tmp = f'''<div class="comment">
+                        <div class="username">😃{comment.username}</div>
+                        <div class="text">{comment.comment}</div>
+                        <div class="ts-view" style="font-size:xx-small;text-align:right;">{comment.ts}</div>
+                        <div class="good-bad">👍x{comment.good} 👎x{comment.bad}</div>
+                    </div><br>'''
+            comment_html_below += tmp 
 
     soup.find('div', {'id':'sub'}).string = ''
-    soup.find('div', {'id':'sub'}).insert(1, BeautifulSoup(comment_html, 'html5lib')) #.replace_with(str(comments))
+    soup.find('div', {'id':'sub'}).insert(1, BeautifulSoup(comment_html, 'html5lib'))
+    soup.find('div', {'id':'main'}).append(BeautifulSoup(comment_html_below, 'html5lib'))
     return str(soup)
