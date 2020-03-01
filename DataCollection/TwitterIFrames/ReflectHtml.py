@@ -81,7 +81,7 @@ def reflect_html(day:str, digest:str):
                         add_nofollow=True,
                         page_structure=False, 
                         safe_attrs_only=False)
-
+    print(inner_html)
     soup = BeautifulSoup(inner_html, 'lxml')
     imported_csses = [el for el in soup.find_all('style', {'type': 'text/css'})]
 
@@ -158,8 +158,14 @@ def glob_fs_and_work():
         path = Path(fn)
         digest = path.name
         day = path.parent.name
-        print('digest day', digest, day)
-        ret = reflect_html(day, digest)
-        print('ret is', ret)
+        out_file = f'{TOP_FOLDER}/var/Twitter/tweet/{day}/{digest}'
+        if Path(out_file).exists():
+            continue
+        try:
+            print('digest day', digest, day)
+            ret = reflect_html(day, digest)
+            print('ret is', ret)
+        except Exception as exc:
+            print(exc)
 if __name__ == '__main__':
     glob_fs_and_work()

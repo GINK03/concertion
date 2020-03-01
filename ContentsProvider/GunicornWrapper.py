@@ -27,14 +27,14 @@ def job():
 
 
 def run():
-    schedule.every().day.at("04:30").do(job)
-    schedule.every().day.at("12:30").do(job)
-    schedule.every().day.at("20:30").do(job)
-
-    job()
+    # schedule.every().day.at("04:30").do(job)
+    # schedule.every().day.at("12:30").do(job)
+    # schedule.every().day.at("20:30").do(job)
+    # while True:
+    #    schedule.run_pending()
+    #    time.sleep(1)
     while True:
-        schedule.run_pending()
-        time.sleep(1)
+        job()
 
 if __name__ == '__main__':
     run()

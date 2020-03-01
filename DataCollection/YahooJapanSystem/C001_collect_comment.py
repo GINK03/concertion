@@ -191,7 +191,7 @@ def process_runner():
         args = [arg for arg in args.to_dict('record')]
         print(f'total input data size {len(args)}')
         with ProcessPoolExecutor(max_workers=NUM) as exe:
-            for ret in exe.map(process, args):
+            for ret in exe.map(process, args, timeout=300):
                 ret
     except concurrent.futures._base.TimeoutError as exc:
         print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] {exc}', file=sys.stderr)

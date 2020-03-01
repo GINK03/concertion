@@ -28,9 +28,17 @@ def get_buzz_tweet() -> str:
         soup = BeautifulSoup(html, features='lxml')
         div = soup.find('body').find('div')
         if idx%2 == 0:
-            div.find(attrs={'class':'EmbeddedTweet'})['style'] = 'margin-top: 0px;'
+            div.find(attrs={'class':'EmbeddedTweet'})['style'] = 'margin-top: 10px; margin-left: 10px;'
         else:
-            div.find(attrs={'class':'EmbeddedTweet'})['style'] = 'margin-top: 0px;'
+            div.find(attrs={'class':'EmbeddedTweet'})['style'] = 'margin-top: 10px; margin-left: 10px;'
+        imagegrids = soup.find_all('a', {'class': 'ImageGrid-image'})
+        for imagegrid in imagegrids:
+            src = imagegrid.find('img').get('src')
+            imagegrid['href'] = src
+        mediaassets = soup.find_all('a', {'class': 'MediaCard-mediaAsset'})
+        for mediaasset in mediaassets:
+            if mediaasset.find('img') and mediaasset.find('img').get('alt') != 'Embedded video':
+                mediaasset['href'] = mediaasset.find('img').get('src')
         buzz_ctx = div.__str__()
         buzz_css = soup.find('body').find('style').__str__()
         buzzes.append(buzz_ctx + buzz_css)
@@ -42,6 +50,8 @@ def generate_top() -> str:
     </head>'''
     tail = '</html>'
     body = ''
+    # titleとか
+    body += '<h1>Concertion.Page SNS時代のバックログと評論</h1>'
     # twitter
     body += '<div class="twitter">'
     body += get_buzz_tweet()
