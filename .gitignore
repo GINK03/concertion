@@ -1,5 +1,6 @@
 __pycache__/
 */__pycache__
+*.swp
 *.pyc
 ContentsProvider/project/__pycache__/project.cpython-37.pyc
 *.csv
