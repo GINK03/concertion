@@ -21,7 +21,9 @@ def job():
                     f' --chdir {HERE}/project wsgi' \
                     f' --keyfile {HOME}/.var/privkey.pem' \
                     f' --certfile {HOME}/.var/fullchain.pem' \
-                    f' --access-logfile {TOP_FOLDER}/var/log/{now}.log')
+                    f' --access-logfile {TOP_FOLDER}/var/log/access_{now}.log' \
+                    f' --error-logfile {TOP_FOLDER}/var/log/error_{now}.log'
+                    )
     except Exception as exc:
         print(exc)
 

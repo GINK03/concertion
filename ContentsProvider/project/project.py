@@ -43,7 +43,7 @@ def get_day(day):
 
 @application.route("/twitter/input/<day>/<digest>")
 def twitter_input(day, digest):
-    print('input', day, digest)
+    # print('input', day, digest)
     with open(f'{TOP_FOLDER}/var/Twitter/input/{day}/{digest}') as fp:
         html = fp.read()
     return html

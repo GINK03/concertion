@@ -18,6 +18,7 @@ import requests
 import glob
 import re
 import pandas as pd
+from tqdm import tqdm
 
 FILE = Path(__file__).name
 TOP_FOLDER = Path(__file__).resolve().parent.parent.parent
@@ -60,7 +61,16 @@ def read_csv_and_put_to_local():
     for url, date in zip(df.link, df.date):
         put_local_html(url, date)
 
+def read_csv_batch_backlog_and_put_to_local():
+    for fn in tqdm(glob.glob(f'{TOP_FOLDER}/var/twitter_batch_backlogs/*/*')):
+        print(fn)
+        df = pd.read_csv(fn)
+        df = df.head(100)
+        print(df)
+        for url, date in zip(df.link, df.date):
+            put_local_html(url, date)
 
 if __name__ == '__main__':
     # put_local_html('https://twitter.com/kagamiisukeee/status/1228872466916769792')
-    read_csv_and_put_to_local()
+    # read_csv_and_put_to_local()
+    read_csv_batch_backlog_and_put_to_local()

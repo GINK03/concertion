@@ -23,13 +23,11 @@ def get_buzz_tweet() -> str:
     from bs4 import BeautifulSoup
     dir_fn = sorted(glob.glob(f'{TOP_FOLDER}/var/Twitter/tweet/*'))[-1]
     buzzes = []
-    for idx, fn in enumerate(glob.glob(f'{dir_fn}/*')):
+    for idx, fn in enumerate(glob.glob(f'{dir_fn}/*')[:10]):
         html = open(fn).read()
         soup = BeautifulSoup(html, features='lxml')
         div = soup.find('body').find('div')
-        if idx%2 == 0:
-            div.find(attrs={'class':'EmbeddedTweet'})['style'] = 'margin-top: 10px; margin-left: 10px;'
-        else:
+        if div.find(attrs={'class':'EmbeddedTweet'}):
             div.find(attrs={'class':'EmbeddedTweet'})['style'] = 'margin-top: 10px; margin-left: 10px;'
         imagegrids = soup.find_all('a', {'class': 'ImageGrid-image'})
         for imagegrid in imagegrids:
