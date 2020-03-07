@@ -45,6 +45,7 @@ def run():
         ts = Path(fn).stat().st_mtime
         ts = datetime.datetime.fromtimestamp(ts)
         fnts = FnTs(fn=fn, ts=ts)
+        print(fnts)
         files.append(fnts)
     files = sorted(files, key=lambda x:x.ts)
     # top 10000件のデータを取得する

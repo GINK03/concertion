@@ -15,12 +15,24 @@ try:
 except Exception as exc:
     raise Exception(exc)
 
+import psutil
 def release_resource():
-    os.system('pgrep phamtomjs | xargs kill -9')
+    # os.system('pgrep phamtomjs | xargs kill -9')
     os.system('pgrep chromedriver | xargs kill -9')
     os.system('pgrep chrome | xargs kill -9')
+    self_pid = os.getpid()
+    for proc in psutil.process_iter():
+        try:
+            # 変なところで、procがハンドルできなくるなることがあるので、例外に対応する
+            if 'python' in proc.name() and proc.pid > self_pid:
+                psutil.Process(proc.pid).terminate()
+        except Exception as exc:
+            print(f'[{FILE}] process kill exception, {exc}', file=sys.stderr)
+    
+release_resource()
 
 def run_suit():
+    release_resource()
     try:
         TwitterIFrames.DeviceMap.run()
     except Exception as exc:

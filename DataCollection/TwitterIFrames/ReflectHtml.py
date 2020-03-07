@@ -151,7 +151,7 @@ def glob_fs_and_work():
         fns = fns
         NUM = 256
     else:
-        fns = fns[:300]
+        fns = sorted(fns)[-300:]
         NUM = 16
     args = [(idx % NUM, fn) for idx, fn in enumerate(fns)]
     for i in range(0, len(args), NUM):
