@@ -49,6 +49,27 @@ def user_favorited_ranking():
         html = fp.read()
     return html
 
+@application.route("/backlog_of_twitter", methods=['get'])
+def backlog_of_twitter():
+    import glob
+    head = '<html><head><title>backlog of twitter</title></head><body>'
+    body = ''
+    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/htmls/*'))):
+        name = Path(fn).name
+        date = name.replace(".html", "")
+        tmp = f'''<a href="/backlog_of_twitter/{name}">{date}</a><br>'''
+        body += tmp
+    tail = '</body></html>'
+    html = head + body + tail
+    return html
+
+@application.route("/backlog_of_twitter/<name>", methods=['get'])
+def backlog_of_twitter_name(name):
+    fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/htmls/{name}'
+    with open(fn) as fp:
+        html = fp.read()
+    return html
+    
 
 @application.route("/twitter/input/<day>/<digest>")
 def twitter_input(day, digest):

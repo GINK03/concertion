@@ -8,3 +8,4 @@ DataCollection/system/var/
 var
 var_matching.jp
 ghostdriver.log
+.python-version

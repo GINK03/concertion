@@ -51,6 +51,8 @@ def generate_top() -> str:
     # titleとか
     body += '<h1>Concertion.Page SNS時代のバックログと評論</h1>'
     body += '<p><a href="/user_favorited_ranking">ツイッターでファボされた人ランキング</a></p>'
+    
+    body += '<p><a href="/backlog_of_twitter">過去のツイッターのバックログ</a></p>'
     # twitter
     body += '<div class="twitter">'
     body += get_buzz_tweet()

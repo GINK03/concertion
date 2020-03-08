@@ -92,7 +92,7 @@ def reflect_html(key: int, day: str, digest: str):
 
             url_digest = GetDigest.get_digest(url)
             print('img url', url)
-            if 'format=jpg' in url or re.search('.jpg$', url) or re.search('.jpeg$', url):
+            if 'format=jpg' in url or re.search('.jpg$', url) or re.search('.jpeg$', url) or re.search('.JPG$', url):
                 with requests.get(url, timeout=3) as r:
                     binary = r.content
                 Path(f'{TOP_FOLDER}/var/Twitter/jpgs').mkdir(exist_ok=True, parents=True)
@@ -106,8 +106,10 @@ def reflect_html(key: int, day: str, digest: str):
                 with open(f'{TOP_FOLDER}/var/Twitter/pngs/{url_digest}', 'wb') as fp:
                     fp.write(binary)
                 img['src'] = f'/twitter/pngs/{url_digest}'
+            elif 'normal' in url:
+                continue
             else:
-                raise Exception('unsupported image!')
+                raise Exception(f'unsupported image! url={url}')
 
         '''adhoc style edit'''
         if soup.find(attrs={'class': 'EmbeddedTweet'}):
@@ -149,17 +151,16 @@ def glob_fs_and_work():
     if E.get('ALL'):
         random.shuffle(fns)
         fns = fns
-        NUM = 256
+        NUM = 1024
     else:
         fns = sorted(fns)[-300:]
         NUM = 16
     args = [(idx % NUM, fn) for idx, fn in enumerate(fns)]
-    for i in range(0, len(args), NUM):
+    for i in tqdm(range(0, len(args), NUM), total=len(args)//NUM):
         os.system('pgrep chrome | xargs kill -9')
         with ProcessPoolExecutor(max_workers=NUM) as exe:
-            for ret in tqdm(exe.map(proc, args[i:i+NUM]), total=NUM):
+            for ret in exe.map(proc, args[i:i+NUM]):
                 ret
-
 
 if __name__ == '__main__':
     glob_fs_and_work()
