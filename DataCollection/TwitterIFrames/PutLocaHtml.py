@@ -62,6 +62,8 @@ def read_csv_and_put_to_local():
         put_local_html(url, date)
 
 def read_csv_batch_backlog_and_put_to_local():
+    # twitter_batch_backlogsは別のプロセスにより生成される
+    # 参考: analytics_favorited_tweets_000_count_freq.py
     for fn in tqdm(glob.glob(f'{TOP_FOLDER}/var/twitter_batch_backlogs/*/*')):
         print(fn)
         df = pd.read_csv(fn)

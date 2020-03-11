@@ -45,28 +45,39 @@ def process(fn):
         cite_html[cite] = html
     with open(output_name, 'wb') as fp:
         pickle.dump(cite_html, fp)
-        
+
+
 fns = [fn for fn in tqdm(glob.glob(f'{TOP_DIR}/var/Twitter/tweet/*'))]
 with ProcessPoolExecutor(max_workers=16) as exe:
     for ret in tqdm(exe.map(process, fns), total=len(fns)):
         ret
 
 # 別プログラムで作成したtwitter_batch_backlogに対して、取得済みを当てはめていく
-for fn in tqdm(glob.glob(f'{TOP_DIR}/var/twitter_batch_backlogs/*/*.csv')):
+
+tmp = []
+for fn in tqdm(glob.glob(f'{TOP_DIR}/var/twitter_batch_backlogs/*/*.csv'), desc='join csv'):
     path = Path(fn)
     date = path.parent.name
     df = pd.read_csv(fn)
-    df['ts'] = df.apply(lambda x: x['date'] + ' ' + x['time'], axis=1)
-    df['ts'] = df['ts'].apply(lambda x: datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
-    df['hour'] = df['ts'].dt.hour
-   
-    # 突合する
-    cite_html_name = f'var/generate_html_structure/{date}.pkl'
-    with open(cite_html_name, 'rb') as fp:
-        cite_html = pickle.load(fp)
+    df['created_at'] = pd.to_datetime(df.created_at, unit='ms') + datetime.timedelta(hours=9)
+    tmp.append(df)
 
+df = pd.concat(tmp)
+df['yyyymmdd'] = df['created_at'].dt.strftime('%Y-%m-%d')
+df['hour'] = df['created_at'].dt.hour
+df.drop_duplicates(subset=['link'], keep='first', inplace=True)
+   
+# 突合する
+cite_html = {}
+for a_file in tqdm(glob.glob('var/generate_html_structure/*.pkl'), desc='load pickle'):
+    with open(a_file, 'rb') as fp:
+        tmp_cite_html = pickle.load(fp)
+    for cite, html in tmp_cite_html.items():
+        cite_html[cite] = html
+
+for yyyymmdd, a_df in tqdm(df.groupby(by=['yyyymmdd']), desc='groupby'):
     oneday_tweets = ''
-    for hour, sub in df.groupby(by=['hour']):
+    for hour, sub in a_df.groupby(by=['hour']):
         sub = sub.copy()
         hour_tweets = ''
         hour_tweets += f'<h2>{date} {hour}時</h2>\n'

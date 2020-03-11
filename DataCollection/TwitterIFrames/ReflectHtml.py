@@ -25,9 +25,9 @@ import base64
 from os import environ as E
 
 FILE = Path(__file__).name
-TOP_FOLDER = Path(__file__).resolve().parent.parent.parent
+TOP_DIR = Path(__file__).resolve().parent.parent.parent
 try:
-    sys.path.append(f'{TOP_FOLDER}')
+    sys.path.append(f'{TOP_DIR}')
     from Web.Structures import TitleUrlDigestScore
     from Web.Structures import YJComment
     from Web import QueryToDict
@@ -74,11 +74,11 @@ def reflect_html(key: int, day: str, digest: str):
             if '@import url' in css.text:
                 css_url = re.search(r'url\("(.*?)"\)', css.text).group(1)
                 css_digest = GetDigest.get_digest(css_url)
-                print(css_url, css_digest)
+                # print(css_url, css_digest)
                 with requests.get(css_url) as r:
                     css_text = r.text
-                Path(f'{TOP_FOLDER}/var/Twitter/css').mkdir(exist_ok=True, parents=True)
-                with open(f'{TOP_FOLDER}/var/Twitter/css/{css_digest}', 'w') as fp:
+                Path(f'{TOP_DIR}/var/Twitter/css').mkdir(exist_ok=True, parents=True)
+                with open(f'{TOP_DIR}/var/Twitter/css/{css_digest}', 'w') as fp:
                     fp.write(css_text)
                 css.string = f'@import url("/twitter/css/{css_digest}")'
 
@@ -91,19 +91,19 @@ def reflect_html(key: int, day: str, digest: str):
             url = o.geturl()
 
             url_digest = GetDigest.get_digest(url)
-            print('img url', url)
+            # print('img url', url)
             if 'format=jpg' in url or re.search('.jpg$', url) or re.search('.jpeg$', url) or re.search('.JPG$', url):
-                with requests.get(url, timeout=3) as r:
+                with requests.get(url, timeout=30) as r:
                     binary = r.content
-                Path(f'{TOP_FOLDER}/var/Twitter/jpgs').mkdir(exist_ok=True, parents=True)
-                with open(f'{TOP_FOLDER}/var/Twitter/jpgs/{url_digest}', 'wb') as fp:
+                Path(f'{TOP_DIR}/var/Twitter/jpgs').mkdir(exist_ok=True, parents=True)
+                with open(f'{TOP_DIR}/var/Twitter/jpgs/{url_digest}', 'wb') as fp:
                     fp.write(binary)
                 img['src'] = f'/twitter/jpgs/{url_digest}'
             elif 'format=png' in url or re.search('.png$', url):
-                with requests.get(url, timeout=3) as r:
+                with requests.get(url, timeout=30) as r:
                     binary = r.content
-                Path(f'{TOP_FOLDER}/var/Twitter/pngs').mkdir(exist_ok=True, parents=True)
-                with open(f'{TOP_FOLDER}/var/Twitter/pngs/{url_digest}', 'wb') as fp:
+                Path(f'{TOP_DIR}/var/Twitter/pngs').mkdir(exist_ok=True, parents=True)
+                with open(f'{TOP_DIR}/var/Twitter/pngs/{url_digest}', 'wb') as fp:
                     fp.write(binary)
                 img['src'] = f'/twitter/pngs/{url_digest}'
             elif 'normal' in url:
@@ -115,15 +115,19 @@ def reflect_html(key: int, day: str, digest: str):
         if soup.find(attrs={'class': 'EmbeddedTweet'}):
             soup.find(attrs={'class': 'EmbeddedTweet'})['style'] = 'margin: 0 auto; margin-top: 150px;'
 
-        out_dir = f'{TOP_FOLDER}/var/Twitter/tweet/{day}'
+        out_dir = f'{TOP_DIR}/var/Twitter/tweet/{day}'
         Path(out_dir).mkdir(exist_ok=True, parents=True)
         with open(f'{out_dir}/{digest}', 'w') as fp:
             fp.write(soup.__str__())
         driver.close()
+        print(f'ordinally done, {day} {digest}')
         # driver.quit()
     except Exception as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
-        print('[Refrect]', exc, 'exc line =', exc_tb.tb_lineno)
+        out_filename = f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}'
+        Path(f'{TOP_DIR}/var/Twitter/tweet/{day}').mkdir(exist_ok=True, parents=True)
+        Path(out_filename).touch()
+        print(f'[refrect] {exc} exc line = {exc_tb.tb_lineno}, {day}, {digest}', file=sys.stderr)
     return f'/twitter/tweet/{day}/{digest}'
 
 
@@ -133,34 +137,34 @@ def proc(arg):
         path = Path(fn)
         digest = path.name
         day = path.parent.name
-        out_file = f'{TOP_FOLDER}/var/Twitter/tweet/{day}/{digest}'
+        out_file = f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}'
         if Path(out_file).exists():
             return
-        print('digest day', digest, day)
+        # print('digest day', digest, day)
         ret = reflect_html(key, day, digest)
     except Exception as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
-        out_filename = f'{TOP_FOLDER}/var/Twitter/tweet/{day}/{digest}'
-        Path(f'{TOP_FOLDER}/var/Twitter/tweet/{day}').mkdir(exist_ok=True, parents=True)
-        Path(out_filename).touch()
-        print(key, fn, exc, 'exc line =',  exc_tb.tb_lineno)
+        print(f'[{FILE}] {key}, {fn}, {exc}, exc line = {exc_tb.tb_lineno}', file=sys.stderr)
 
 
 def glob_fs_and_work():
-    fns = glob.glob(f'{TOP_FOLDER}/var/Twitter/input/*/*')
+    fns = glob.glob(f'{TOP_DIR}/var/Twitter/input/*/*')
     if E.get('ALL'):
         random.shuffle(fns)
         fns = fns
-        NUM = 1024
+        NUM = 64
     else:
         fns = sorted(fns)[-300:]
         NUM = 16
     args = [(idx % NUM, fn) for idx, fn in enumerate(fns)]
     for i in tqdm(range(0, len(args), NUM), total=len(args)//NUM):
         os.system('pgrep chrome | xargs kill -9')
-        with ProcessPoolExecutor(max_workers=NUM) as exe:
-            for ret in exe.map(proc, args[i:i+NUM]):
-                ret
+        try:
+            with ProcessPoolExecutor(max_workers=NUM) as exe:
+                for ret in exe.map(proc, args[i:i+NUM]):
+                    ret
+        except Exception as exc:
+            print(exc)
 
 if __name__ == '__main__':
     glob_fs_and_work()

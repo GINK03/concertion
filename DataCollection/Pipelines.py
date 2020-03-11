@@ -12,6 +12,7 @@ try:
     sys.path.append(f'{HERE}')
     import TwitterIFrames
     import YahooJapanSystem
+    import GenerateSitemap
 except Exception as exc:
     raise Exception(exc)
 
@@ -80,6 +81,14 @@ def run_suit():
         print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] error occured {exc}', file=sys.stderr)
     print(f'end to make stats(D001_make_stats), elapsed = {time.time() - start:0.02f}.')
     release_resource()
+    
+    print('start to make sitemap.')
+    start = time.time()
+    try:
+        GenerateSitemap.generate.run()
+    except Exception as exc:
+        print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] error occured {exc}', file=sys.stderr)
+    print(f'end to make sitemap, elapsed = {time.time() - start:0.02f}.')
 
 
 def run():

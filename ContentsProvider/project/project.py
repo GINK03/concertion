@@ -17,6 +17,7 @@ try:
     sys.path.append(f'{TOP_DIR}')
     from Web import Base64EncodeDecode
     from Web import GenerateTop
+    from Web import GenerateDailyYJRankingList
     from Web import AdhocYJHtmlReplace
     from Web.Structures import DayAndPath
     from Web import Hostname
@@ -43,11 +44,24 @@ def get_day(day):
     data = Base64EncodeDecode.string_base64_pickle(request.args['serialized'])
     return GetDay.get_day_html(day, data)
 
+@application.route("/sitemap", methods=['GET'])
+@application.route("/sitemap.txt", methods=['GET'])
+def sitemap():
+    with open(f'{TOP_DIR}/var/sitemap.txt') as fp:
+        html = fp.read()
+    return html
+
 @application.route("/user_favorited_ranking", methods=['GET'])
 def user_favorited_ranking():
     with open(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/user_favorited_ranking.html') as fp:
         html = fp.read()
     return html
+
+
+@application.route("/daily_yj_ranking_list", methods=['GET'])
+def daily_yj_ranking_list():
+    return GenerateDailyYJRankingList.generate_daily_ranking_list()
+
 
 @application.route("/backlog_of_twitter", methods=['get'])
 def backlog_of_twitter():
@@ -63,13 +77,14 @@ def backlog_of_twitter():
     html = head + body + tail
     return html
 
+
 @application.route("/backlog_of_twitter/<name>", methods=['get'])
 def backlog_of_twitter_name(name):
     fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/htmls/{name}'
     with open(fn) as fp:
         html = fp.read()
     return html
-    
+
 
 @application.route("/twitter/input/<day>/<digest>")
 def twitter_input(day, digest):
