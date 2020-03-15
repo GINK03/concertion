@@ -47,55 +47,59 @@ def process(fn):
         pickle.dump(cite_html, fp)
 
 
-fns = [fn for fn in tqdm(glob.glob(f'{TOP_DIR}/var/Twitter/tweet/*'))]
-with ProcessPoolExecutor(max_workers=16) as exe:
-    for ret in tqdm(exe.map(process, fns), total=len(fns)):
-        ret
+def run():
+    fns = [fn for fn in tqdm(glob.glob(f'{TOP_DIR}/var/Twitter/tweet/*'))]
+    with ProcessPoolExecutor(max_workers=16) as exe:
+        for ret in tqdm(exe.map(process, fns), total=len(fns)):
+            ret
 
-# 別プログラムで作成したtwitter_batch_backlogに対して、取得済みを当てはめていく
+    # 別プログラムで作成したtwitter_batch_backlogに対して、取得済みを当てはめていく
 
-tmp = []
-for fn in tqdm(glob.glob(f'{TOP_DIR}/var/twitter_batch_backlogs/*/*.csv'), desc='join csv'):
-    path = Path(fn)
-    date = path.parent.name
-    df = pd.read_csv(fn)
-    df['created_at'] = pd.to_datetime(df.created_at, unit='ms') + datetime.timedelta(hours=9)
-    tmp.append(df)
+    tmp = []
+    for fn in tqdm(glob.glob(f'{TOP_DIR}/var/twitter_batch_backlogs/*/*.csv'), desc='join csv'):
+        path = Path(fn)
+        date = path.parent.name
+        df = pd.read_csv(fn)
+        df['created_at'] = pd.to_datetime(df.created_at, unit='ms') + datetime.timedelta(hours=9)
+        tmp.append(df)
 
-df = pd.concat(tmp)
-df['yyyymmdd'] = df['created_at'].dt.strftime('%Y-%m-%d')
-df['hour'] = df['created_at'].dt.hour
-df.drop_duplicates(subset=['link'], keep='first', inplace=True)
-   
-# 突合する
-cite_html = {}
-for a_file in tqdm(glob.glob('var/generate_html_structure/*.pkl'), desc='load pickle'):
-    with open(a_file, 'rb') as fp:
-        tmp_cite_html = pickle.load(fp)
-    for cite, html in tmp_cite_html.items():
-        cite_html[cite] = html
+    df = pd.concat(tmp)
+    df['yyyymmdd'] = df['created_at'].dt.strftime('%Y-%m-%d')
+    df['hour'] = df['created_at'].dt.hour
+    df.drop_duplicates(subset=['link'], keep='first', inplace=True)
+       
+    # 突合する
+    cite_html = {}
+    for a_file in tqdm(glob.glob('var/generate_html_structure/*.pkl'), desc='load pickle'):
+        with open(a_file, 'rb') as fp:
+            tmp_cite_html = pickle.load(fp)
+        for cite, html in tmp_cite_html.items():
+            cite_html[cite] = html
 
-for yyyymmdd, a_df in tqdm(df.groupby(by=['yyyymmdd']), desc='groupby'):
-    oneday_tweets = ''
-    for hour, sub in a_df.groupby(by=['hour']):
-        sub = sub.copy()
-        hour_tweets = ''
-        hour_tweets += f'<h2>{date} {hour}時</h2>\n'
-        sub.sort_values(by=['freq'], ascending=False, inplace=True)
-        # print(sub)
-        for link, freq in zip(sub.link, sub.freq):
-            if link not in cite_html:
-                continue
-            shot_tweet = ''
-            shot_tweet += f'<p>Freq {freq}</p>\n'
-            # shot_tweet += f'''<blockquote class="twitter-tweet"><p lang="ja" dir="ltr">context <a href="{link}"> </a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>\n'''
-            shot_tweet += cite_html[link]
-            hour_tweets += shot_tweet
-        oneday_tweets += hour_tweets
-    # print(oneday_tweets)
-    head = f'<html><head><title>{date}</title></head>'
-    body = f'<body>{oneday_tweets}</body>'
-    tail = '</html>'
-    html = head + body + tail
-    with open(f'var/htmls/{date}.html', 'w') as fp:
-        fp.write(html)
+    for yyyymmdd, a_df in tqdm(df.groupby(by=['yyyymmdd']), desc='groupby'):
+        oneday_tweets = ''
+        for hour, sub in a_df.groupby(by=['hour']):
+            sub = sub.copy()
+            hour_tweets = ''
+            hour_tweets += f'<h2>{date} {hour}時</h2>\n'
+            sub.sort_values(by=['freq'], ascending=False, inplace=True)
+            # print(sub)
+            for link, freq in zip(sub.link, sub.freq):
+                if link not in cite_html:
+                    continue
+                shot_tweet = ''
+                shot_tweet += f'<p>Freq {freq}</p>\n'
+                # shot_tweet += f'''<blockquote class="twitter-tweet"><p lang="ja" dir="ltr">context <a href="{link}"> </a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>\n'''
+                shot_tweet += cite_html[link]
+                hour_tweets += shot_tweet
+            oneday_tweets += hour_tweets
+        # print(oneday_tweets)
+        head = f'<html><head><title>{date}</title></head>'
+        body = f'<body>{oneday_tweets}</body>'
+        tail = '</html>'
+        html = head + body + tail
+        with open(f'var/htmls/{date}.html', 'w') as fp:
+            fp.write(html)
+
+if __name__ == "__main__":
+    run()

@@ -21,9 +21,9 @@ import pandas as pd
 from tqdm import tqdm
 
 FILE = Path(__file__).name
-TOP_FOLDER = Path(__file__).resolve().parent.parent.parent
+TOP_DIR = Path(__file__).resolve().parent.parent.parent
 try:
-    sys.path.append(f'{TOP_FOLDER}')
+    sys.path.append(f'{TOP_DIR}')
     from Web.Structures import TitleUrlDigestScore
     from Web.Structures import YJComment
     from Web import QueryToDict
@@ -46,25 +46,25 @@ def put_local_html(url: str, date: str):
 <blockquote class="twitter-tweet"><p lang="ja" dir="ltr">ご飯いきましょう？あたし朝まで空いてますよ。ふふ。<a href="{url}"> </a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 </body>
 </html>'''
-    Path(f'{TOP_FOLDER}/var/Twitter/input/{date}/').mkdir(exist_ok=True, parents=True)
-    with open(f'{TOP_FOLDER}/var/Twitter/input/{date}/{digest}', 'w') as fp:
+    Path(f'{TOP_DIR}/var/Twitter/input/{date}/').mkdir(exist_ok=True, parents=True)
+    with open(f'{TOP_DIR}/var/Twitter/input/{date}/{digest}', 'w') as fp:
         fp.write(raw_html)
     print('digest is', digest, 'url', url)
     return (url, digest)
 
 
 def read_csv_and_put_to_local():
-    df = pd.read_csv(f'{TOP_FOLDER}/var/FetchRecentBuzzTweets.csv')
+    df = pd.read_csv(f'{TOP_DIR}/var/FetchRecentBuzzTweets.csv')
     df = df[df.freq >= 2]
     df = df.head(20)
     print(df)
     for url, date in zip(df.link, df.date):
         put_local_html(url, date)
 
-def read_csv_batch_backlog_and_put_to_local():
+def read_csv_batch_backlog_and_put_to_local(path_str=None):
     # twitter_batch_backlogsは別のプロセスにより生成される
     # 参考: analytics_favorited_tweets_000_count_freq.py
-    for fn in tqdm(glob.glob(f'{TOP_FOLDER}/var/twitter_batch_backlogs/*/*')):
+    for fn in tqdm(glob.glob(f"{path_str}/*/*")):
         print(fn)
         df = pd.read_csv(fn)
         df = df.head(100)

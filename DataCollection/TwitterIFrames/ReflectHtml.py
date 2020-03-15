@@ -147,14 +147,14 @@ def proc(arg):
         print(f'[{FILE}] {key}, {fn}, {exc}, exc line = {exc_tb.tb_lineno}', file=sys.stderr)
 
 
-def glob_fs_and_work():
+def glob_fs_and_work(NUM=300):
     fns = glob.glob(f'{TOP_DIR}/var/Twitter/input/*/*')
     if E.get('ALL'):
         random.shuffle(fns)
         fns = fns
         NUM = 64
     else:
-        fns = sorted(fns)[-300:]
+        fns = sorted(fns)[-NUM:]
         NUM = 16
     args = [(idx % NUM, fn) for idx, fn in enumerate(fns)]
     for i in tqdm(range(0, len(args), NUM), total=len(args)//NUM):

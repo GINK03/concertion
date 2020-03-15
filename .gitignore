@@ -1,4 +1,5 @@
 __pycache__/
+mount
 */__pycache__
 *.swp
 *.pyc
