@@ -16,14 +16,14 @@ def job():
         # stop gunicorn and reboot
         # os.system('pkill gunicorn')
         #time.sleep(10)
-        os.system(f'gunicorn -w 4' \
+        cmd = 'gunicorn -w 4' \
                     f' --bind 0.0.0.0:443' \
                     f' --chdir {HERE}/project wsgi' \
                     f' --keyfile {HOME}/.var/privkey.pem' \
                     f' --certfile {HOME}/.var/fullchain.pem' \
                     f' --access-logfile {TOP_FOLDER}/var/log/access_{now}.log' \
                     f' --error-logfile {TOP_FOLDER}/var/log/error_{now}.log'
-                    )
+        os.system(cmd)
     except Exception as exc:
         print(exc)
 
@@ -34,9 +34,10 @@ def run():
     # schedule.every().day.at("20:30").do(job)
     # while True:
     #    schedule.run_pending()
-    #    time.sleep(1)
     while True:
+        print('start to job')
         job()
+        time.sleep(3)
 
 if __name__ == '__main__':
     run()

@@ -2,6 +2,7 @@ __pycache__/
 mount
 */__pycache__
 *.swp
+*.swo
 *.pyc
 ContentsProvider/project/__pycache__/project.cpython-37.pyc
 *.csv

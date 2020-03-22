@@ -24,22 +24,25 @@ def get_buzz_tweet() -> str:
     dir_fn = sorted(glob.glob(f'{TOP_FOLDER}/var/Twitter/tweet/*'))[-1]
     buzzes = []
     for idx, fn in enumerate(glob.glob(f'{dir_fn}/*')[:10]):
-        html = open(fn).read()
-        soup = BeautifulSoup(html, features='lxml')
-        div = soup.find('body').find('div')
-        if div.find(attrs={'class':'EmbeddedTweet'}):
-            div.find(attrs={'class':'EmbeddedTweet'})['style'] = 'margin-top: 10px; margin-left: 10px;'
-        imagegrids = soup.find_all('a', {'class': 'ImageGrid-image'})
-        for imagegrid in imagegrids:
-            src = imagegrid.find('img').get('src')
-            imagegrid['href'] = src
-        mediaassets = soup.find_all('a', {'class': 'MediaCard-mediaAsset'})
-        for mediaasset in mediaassets:
-            if mediaasset.find('img') and mediaasset.find('img').get('alt') != 'Embedded video':
-                mediaasset['href'] = mediaasset.find('img').get('src')
-        buzz_ctx = div.__str__()
-        buzz_css = soup.find('body').find('style').__str__()
-        buzzes.append(buzz_ctx + buzz_css)
+        try:
+            html = open(fn).read()
+            soup = BeautifulSoup(html, features='lxml')
+            div = soup.find('body').find('div')
+            if div.find(attrs={'class':'EmbeddedTweet'}):
+                div.find(attrs={'class':'EmbeddedTweet'})['style'] = 'margin-top: 10px; margin-left: 10px;'
+            imagegrids = soup.find_all('a', {'class': 'ImageGrid-image'})
+            for imagegrid in imagegrids:
+                src = imagegrid.find('img').get('src')
+                imagegrid['href'] = src
+            mediaassets = soup.find_all('a', {'class': 'MediaCard-mediaAsset'})
+            for mediaasset in mediaassets:
+                if mediaasset.find('img') and mediaasset.find('img').get('alt') != 'Embedded video':
+                    mediaasset['href'] = mediaasset.find('img').get('src')
+            buzz_ctx = div.__str__()
+            buzz_css = soup.find('body').find('style').__str__()
+            buzzes.append(buzz_ctx + buzz_css)
+        except Exception as exc:
+            print(exc, file=sys.stderr)
     html = '\n'.join(buzzes)
     return html
 

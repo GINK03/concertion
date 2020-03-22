@@ -32,11 +32,18 @@ def run():
             args.append(fn1)
     
     objs = []
-    with ThreadPoolExecutor(max_workers=32) as exe:
-        for r in tqdm(exe.map(process, args), total=len(args)):
-            if r is None:
-                continue
-            objs.append(r)
+    try:
+        with ThreadPoolExecutor(max_workers=32) as exe:
+            for r in tqdm(exe.map(process, args, timeout=60*5), total=len(args)):
+                if r is None:
+                    continue
+                objs.append(r)
+    except Exception as exc:
+        print(exc, file=sys.stderr)
+    # clean up pkls
+    for fn0 in glob.glob(f'{INPUT_FOLDER}/*'):
+        for fn1 in glob.glob(f'{fn0}/*.pkl'):
+            Path(fn1).unlink()
 
     df = pd.DataFrame(objs)
 
