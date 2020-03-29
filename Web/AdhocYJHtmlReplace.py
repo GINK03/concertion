@@ -70,7 +70,11 @@ def yj_html_replace(html:str, digest:str) -> str:
                     </div><br>'''
             comment_html_below += tmp 
 
-    soup.find('div', {'id':'sub'}).string = ''
-    soup.find('div', {'id':'sub'}).insert(1, BeautifulSoup(comment_html, 'html5lib'))
-    soup.find('div', {'id':'main'}).append(BeautifulSoup(comment_html_below, 'html5lib'))
+    try:
+        soup.find('div', {'id':'sub'}).string = ''
+        soup.find('div', {'id':'sub'}).insert(1, BeautifulSoup(comment_html, 'html5lib'))
+        soup.find('div', {'id':'main'}).append(BeautifulSoup(comment_html_below, 'html5lib'))
+    except Exception as exc:
+        print(f'{exc}', file=sys.stderr)
+        return "Cannnot handle this page"
     return str(soup)
