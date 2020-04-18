@@ -40,6 +40,7 @@ def run():
             datum_freq[datum] += freq
 
         shake_down(date_datum_freq)
+        print('debug', len(date_datum_freq))
 
     for date, datum_freq in date_datum_freq.items():
         df = pd.DataFrame(list(datum_freq.keys()))

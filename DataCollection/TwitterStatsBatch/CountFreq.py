@@ -23,7 +23,7 @@ def proc(arg):
     key, sub_dirs = arg
     try:
         datum_freq = {}
-        for sub_dir in tqdm(sub_dirs, desc="in a child process"):
+        for sub_dir in tqdm(sub_dirs, desc="in a child process", disable=True):
             # print(key, sub_dir)
             username = Path(sub_dir).name
             if not Path(sub_dir).is_dir():
@@ -44,39 +44,42 @@ def proc(arg):
                         datum_freq[datum] += 1
         with open(f'{HERE}/var/{NAME}/{key:06d}.pkl', 'wb') as fp:
             pickle.dump(datum_freq, fp)
+        # print('finished', key)
     except Exception as exc:
         print(exc)
 
 def paralell_process(sub_dir):
     time_th = datetime.datetime.now() - datetime.timedelta(days=3)
     ts = datetime.datetime.fromtimestamp(Path(sub_dir).stat().st_mtime)
-
-    if time_th > ts and E.get("TEST") != "1":
+    # print(Path(sub_dir).name, ts, ts > time_th)
+    if not (ts > time_th):
         return None
-    # print(sub_dir, ts)
     return sub_dir
 
 
 def run():
     sub_dirs = []
-    for dir in glob.glob(f'{HERE}/mount/matching.jp/var/favorites*'):
+    """
+    1. すべてのUtils/favorites.pyで保存したreplicaが対象
+    """
+    for dir in glob.glob(f'{HERE}/var/fav*'):
         if not Path(dir).is_dir():
             continue
-
-        if E.get("TEST") is None:
-            arg_dirs = list(glob.glob(f'{dir}/*'))
-        else:
-            arg_dirs = list(glob.glob(f'{dir}/*'))[:100]
-
+        """
+        1. 直近3日前までのデータに限定して対象のディレクトリをsub_dirsに追加
+        2. btrfsの場合、古いディレクトリほどglob.globでスキャンしたときに前方に来るので、それを利用して末尾のN件を処理対象とする
+        """
+        arg_dirs = list(glob.glob(f'{dir}/*'))[-10000:]
+        print('debug', len(arg_dirs))
         with ThreadPoolExecutor(max_workers=100) as exe:
             for ret in tqdm(exe.map(paralell_process, arg_dirs), total=len(arg_dirs), desc=f"ScanSubDirs name = {Path(dir).name}"):
-                # print(ret, E.get("TEST"), len(sub_dirs))
                 if ret is None:
                     continue
                 sub_dirs.append(ret)
+        print('debug', len(sub_dirs))
 
     print('start to create args...')
-    SPLIT = max(len(sub_dirs)//10000, 1)
+    SPLIT = max(len(sub_dirs)//100, 1)
     args = {}
     for idx, sub_dir in enumerate(sub_dirs):
         key = idx % SPLIT
@@ -86,16 +89,18 @@ def run():
     args = [(key, sub_dirs) for key, sub_dirs in args.items()]
     print('finish to create args...')
     # This is output dir
+    """
+    1. なんのツイートが何回favされたかを観測
+    2. chunkでaggregateして次のプロセスでうまく処理する
+    """
     out_dir = f'{HERE}/var/{NAME}'
     if Path(out_dir).exists():
         shutil.rmtree(out_dir)
     Path(out_dir).mkdir(exist_ok=True, parents=True)
-    # for arg in args:
-    #    proc(arg)
+    # [proc(arg) for arg in args]
     with ProcessPoolExecutor(max_workers=16) as exe:
         for ret in tqdm(exe.map(proc, args), total=len(args), desc="ParallelRun"):
             ret
-
 
 if __name__ == "__main__":
     run()

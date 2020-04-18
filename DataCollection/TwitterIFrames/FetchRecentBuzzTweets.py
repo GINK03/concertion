@@ -39,9 +39,15 @@ def process(fnts):
 objs = {}
 
 def run():
+    """
+    1. 最新のツイートのバズった状態を見てくる
+    2. link, date, tsのnamedtupleの数を数えている
+    """
     global objs
     files = []
-    for fn in tqdm(glob.glob(f'{HERE}/var/favs/*')[-30000:]):
+
+    input_dirs = glob.glob(f'{HERE}/var/favs*/*')
+    for fn in tqdm(input_dirs[-30000:]):
         ts = Path(fn).stat().st_mtime
         ts = datetime.datetime.fromtimestamp(ts)
         fnts = FnTs(fn=fn, ts=ts)
