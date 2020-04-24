@@ -11,6 +11,7 @@ import datetime
 import shutil
 from os import environ as E
 
+HOME = E.get("HOME")
 FILE = Path(__file__).name
 NAME = FILE.replace(".py", "")
 HERE = Path(__file__).resolve().parent
@@ -28,7 +29,8 @@ def proc(arg):
             username = Path(sub_dir).name
             if not Path(sub_dir).is_dir():
                 continue
-            for fn in glob.glob(f'{sub_dir}/*'):
+            # 修正: ディレクトリごとに名前で昇順にソート
+            for fn in sorted(glob.glob(f'{sub_dir}/*')):
                 with open(fn) as fp:
                     for line in fp:
                         line = line.strip()
@@ -61,8 +63,9 @@ def run():
     sub_dirs = []
     """
     1. すべてのUtils/favorites.pyで保存したreplicaが対象
+    2. 必ずディレクトリを昇順にソートする
     """
-    for dir in glob.glob(f'{HERE}/var/fav*'):
+    for dir in sorted(glob.glob(f'{HOME}/.mnt/fav*')):
         if not Path(dir).is_dir():
             continue
         """
