@@ -47,6 +47,14 @@ def run_suit():
         Utils.CleanTmpDir.run()
     except Exception as exc:
         print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] error occured {exc}', file=sys.stderr)
+   
+    """
+    流行ったツイート過去N日分を集計して正しくバッグログに反映する
+    """
+    if datetime.datetime.now().hour in {5, 6, 18, 21} or E.get("TEST_TWITTER_STAT_BATCH"):
+        print("start to run TwitterStatsBatch.AllRecentTwitterRanking.run()...")
+        TwitterStatsBatch.AllRecentTwitterRanking.run()
+
     
     release_resource()
     if datetime.datetime.now().hour in {0, 1} or E.get("TEST_TWITTER_STAT_BATCH"):

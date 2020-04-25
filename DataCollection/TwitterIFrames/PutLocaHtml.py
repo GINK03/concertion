@@ -40,6 +40,11 @@ Twitterの魚拓サービス
 
 
 def put_local_html(url: str, date: str):
+    """
+    date: str, "YYYY-mm-dd"のフォーマットでstr型で入ってくる必要がある
+    """
+    if len(date) > len("YYYY-mm-dd"):
+        raise Exception(f"date file format must be 'YYYY-mm-dd':str, {date}")
     digest = GetDigest.get_digest(url)
     raw_html = f'''<html>
 <body>
@@ -49,7 +54,7 @@ def put_local_html(url: str, date: str):
     Path(f'{TOP_DIR}/var/Twitter/input/{date}/').mkdir(exist_ok=True, parents=True)
     with open(f'{TOP_DIR}/var/Twitter/input/{date}/{digest}', 'w') as fp:
         fp.write(raw_html)
-    print('digest is', digest, 'url', url)
+    print('putting local html, digest is', digest, 'url', url)
     return (url, digest)
 
 

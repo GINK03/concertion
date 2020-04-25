@@ -25,6 +25,7 @@ import base64
 from os import environ as E
 
 FILE = Path(__file__).name
+NAME = Path(__file__).name.replace(".py", "")
 TOP_DIR = Path(__file__).resolve().parent.parent.parent
 try:
     sys.path.append(f'{TOP_DIR}')
@@ -46,6 +47,13 @@ def reflect_html(key: int, day: str, digest: str):
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
+    
+    """
+    1. すでに処理したファイルが存在していたらスキップ
+    """
+    out_filename = f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}'
+    if Path(out_filename).exists():
+        return True
     options = Options()
     options.add_argument("--headless")
     options.add_argument('--disable-gpu')
@@ -55,7 +63,7 @@ def reflect_html(key: int, day: str, digest: str):
     try:
         driver = webdriver.Chrome(executable_path=shutil.which("chromedriver"), options=options)
         driver.get(f'https://concertion.page/twitter/input/{day}/{digest}')
-        time.sleep(2.0)
+        time.sleep(2.5)
         html = driver.page_source
         '''get shadow-root'''
         elm = driver.execute_script('''return document.querySelector("twitter-widget").shadowRoot''')
@@ -119,15 +127,18 @@ def reflect_html(key: int, day: str, digest: str):
         Path(out_dir).mkdir(exist_ok=True, parents=True)
         with open(f'{out_dir}/{digest}', 'w') as fp:
             fp.write(soup.__str__())
-        driver.close()
-        print(f'ordinally done, {day} {digest}')
+        # driver.close()
+        print(f'[{NAME}] ordinally done, {day} {digest}, {out_dir}/{digest}')
         # driver.quit()
     except Exception as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         out_filename = f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}'
         Path(f'{TOP_DIR}/var/Twitter/tweet/{day}').mkdir(exist_ok=True, parents=True)
-        Path(out_filename).touch()
-        print(f'[refrect] {exc} exc line = {exc_tb.tb_lineno}, {day}, {digest}', file=sys.stderr)
+        # パースに失敗したやつを無視する時、有効にする
+        # Path(out_filename).touch()
+        print(f'[{NAME}] {exc} exc line = {exc_tb.tb_lineno}, {day}, {digest}, {out_filename}', file=sys.stderr)
+        time.sleep(5)
+        return None
     return f'/twitter/tweet/{day}/{digest}'
 
 
