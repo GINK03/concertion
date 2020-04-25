@@ -50,6 +50,7 @@ def proc(arg):
     except Exception as exc:
         print(exc)
 
+
 def paralell_process(sub_dir):
     time_th = datetime.datetime.now() - datetime.timedelta(days=3)
     ts = datetime.datetime.fromtimestamp(Path(sub_dir).stat().st_mtime)
@@ -65,21 +66,20 @@ def run():
     1. すべてのUtils/favorites.pyで保存したreplicaが対象
     2. 必ずディレクトリを昇順にソートする
     """
-    for dir in sorted(glob.glob(f'{HOME}/.mnt/fav*')):
-        if not Path(dir).is_dir():
-            continue
-        """
-        1. 直近3日前までのデータに限定して対象のディレクトリをsub_dirsに追加
-        2. btrfsの場合、古いディレクトリほどglob.globでスキャンしたときに前方に来るので、それを利用して末尾のN件を処理対象とする
-        """
-        arg_dirs = list(glob.glob(f'{dir}/*'))[-10000:]
-        print('debug', len(arg_dirs))
-        with ThreadPoolExecutor(max_workers=100) as exe:
-            for ret in tqdm(exe.map(paralell_process, arg_dirs), total=len(arg_dirs), desc=f"ScanSubDirs name = {Path(dir).name}"):
-                if ret is None:
-                    continue
-                sub_dirs.append(ret)
-        print('debug', len(sub_dirs))
+    dir = sorted(glob.glob(f'{HOME}/.mnt/fav*'))[-1]
+    print(dir)
+    """
+    1. 直近3日前までのデータに限定して対象のディレクトリをsub_dirsに追加
+    2. btrfsの場合、古いディレクトリほどglob.globでスキャンしたときに前方に来るので、それを利用して末尾のN件を処理対象とする
+    """
+    arg_dirs = list(glob.glob(f'{dir}/*'))[-10000:]
+    print('debug', len(arg_dirs))
+    with ThreadPoolExecutor(max_workers=100) as exe:
+        for ret in tqdm(exe.map(paralell_process, arg_dirs), total=len(arg_dirs), desc=f"ScanSubDirs name = {Path(dir).name}"):
+            if ret is None:
+                continue
+            sub_dirs.append(ret)
+    print('debug', len(sub_dirs))
 
     print('start to create args...')
     SPLIT = max(len(sub_dirs)//100, 1)
@@ -104,6 +104,7 @@ def run():
     with ProcessPoolExecutor(max_workers=16) as exe:
         for ret in tqdm(exe.map(proc, args), total=len(args), desc="ParallelRun"):
             ret
+
 
 if __name__ == "__main__":
     run()

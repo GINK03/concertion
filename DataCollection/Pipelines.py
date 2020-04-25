@@ -5,6 +5,7 @@ from inspect import currentframe, getframeinfo
 import os
 from os import environ as E
 import datetime
+
 FILE = Path(__file__).name
 HERE = Path(__file__).resolve().parent
 TOP_DIR = Path(__file__).resolve().parent.parent.parent
@@ -42,12 +43,14 @@ release_resource()
 
 def run_suit():
     try:
+        Utils.DeviceMap.run()
         Utils.CleanTmpDir.run()
     except Exception as exc:
         print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] error occured {exc}', file=sys.stderr)
     
     release_resource()
     if datetime.datetime.now().hour in {0, 1} or E.get("TEST_TWITTER_STAT_BATCH"):
+        TwitterStatsBatch.DeviceMap.run()
         TwitterStatsBatch.CountFreq.run()
         TwitterStatsBatch.analytics_favorited_tweets_010_join_pickle_and_split_by_date.run()
         TwitterStatsBatch.analytics_favorited_tweets_020_call_otherlibs.run()
