@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 
 import base64
 from os import environ as E
+from typing import Union, Tuple, Dict, List
 
 FILE = Path(__file__).name
 NAME = Path(__file__).name.replace(".py", "")
@@ -40,7 +41,7 @@ warnings.simplefilter("ignore")
 headers = {'User-Anget': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.88 Safari/537.36'}
 
 
-def reflect_html(key: int, day: str, digest: str):
+def reflect_html(key: int, day: str, digest: str) -> Union[None, bool]:
     from selenium import webdriver
     from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.chrome.options import Options
@@ -99,7 +100,6 @@ def reflect_html(key: int, day: str, digest: str):
             url = o.geturl()
 
             url_digest = GetDigest.get_digest(url)
-            # print('img url', url)
             if 'format=jpg' in url or re.search('.jpg$', url) or re.search('.jpeg$', url) or re.search('.JPG$', url):
                 with requests.get(url, timeout=30) as r:
                     binary = r.content
@@ -127,16 +127,16 @@ def reflect_html(key: int, day: str, digest: str):
         Path(out_dir).mkdir(exist_ok=True, parents=True)
         with open(f'{out_dir}/{digest}', 'w') as fp:
             fp.write(soup.__str__())
-        # driver.close()
+        driver.close()
+        # if E.get("DEBUG"):
         print(f'[{NAME}] ordinally done, {day} {digest}, {out_dir}/{digest}')
-        # driver.quit()
     except Exception as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         out_filename = f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}'
         Path(f'{TOP_DIR}/var/Twitter/tweet/{day}').mkdir(exist_ok=True, parents=True)
         # パースに失敗したやつを無視する時、有効にする
         # Path(out_filename).touch()
-        print(f'[{NAME}] {exc} exc line = {exc_tb.tb_lineno}, {day}, {digest}, {out_filename}', file=sys.stderr)
+        print(f'[{NAME}] exc = {exc} line = {exc_tb.tb_lineno}, {day}, {digest}, {out_filename}', file=sys.stderr)
         time.sleep(5)
         return None
     return f'/twitter/tweet/{day}/{digest}'
@@ -151,7 +151,6 @@ def proc(arg):
         out_file = f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}'
         if Path(out_file).exists():
             return
-        # print('digest day', digest, day)
         ret = reflect_html(key, day, digest)
     except Exception as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -159,23 +158,21 @@ def proc(arg):
 
 
 def glob_fs_and_work(NUM=300):
-    fns = glob.glob(f'{TOP_DIR}/var/Twitter/input/*/*')
-    if E.get('ALL'):
-        random.shuffle(fns)
-        fns = fns
-        NUM = 64
-    else:
-        fns = sorted(fns)[-NUM:]
-        NUM = 16
-    args = [(idx % NUM, fn) for idx, fn in enumerate(fns)]
-    for i in tqdm(range(0, len(args), NUM), total=len(args)//NUM):
-        os.system('pgrep chrome | xargs kill -9')
-        try:
-            with ProcessPoolExecutor(max_workers=NUM) as exe:
-                for ret in exe.map(proc, args[i:i+NUM]):
-                    ret
-        except Exception as exc:
-            print(exc)
+    """
+    1. 最新のタイムディレクトリのうちランダムでツイートを取得する
+    """
+    day_dir = sorted(glob.glob(f'{TOP_DIR}/var/Twitter/input/*'))[-1]
+    tweet_files = glob.glob(f'{day_dir}/*')
+    random.shuffle(tweet_files)
+    tweet_files = tweet_files[:NUM]
+
+    args = [(idx%16, tweet_file) for idx,tweet_file in enumerate(tweet_files)]
+    try:
+        with ProcessPoolExecutor(max_workers=16) as exe:
+            for ret in tqdm(exe.map(proc, args), desc=f"[{FILE}] glob_fs_and_work, now getting...", total=len(args)):
+                ret
+    except Exception as exc:
+        print(f"[{FILE}] exc = {exc}", file=sys.stderr)
 
 if __name__ == '__main__':
     glob_fs_and_work()

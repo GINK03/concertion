@@ -26,11 +26,8 @@ def shake_down(date_datum_freq):
 def run():
 
     date_datum_freq = {}
-    for fn in tqdm(glob.glob(f'{HERE}/var/CountFreq/*.pkl')):
-        for datum, freq in tqdm(pickle.load(open(fn, 'rb')).items(), desc=fn):
-            #print(datum, freq)
-            #if freq == 1:
-            #    continue
+    for fn in tqdm(glob.glob(f'{HERE}/var/CountFreq/*.pkl'), desc=f"[{FILE}] shake down logs..."):
+        for datum, freq in pickle.load(open(fn, 'rb')).items():
             date = datum.date
             if date not in date_datum_freq:
                 date_datum_freq[date] = {}
@@ -40,13 +37,12 @@ def run():
             datum_freq[datum] += freq
 
         shake_down(date_datum_freq)
-        print('debug', len(date_datum_freq))
 
     for date, datum_freq in date_datum_freq.items():
         df = pd.DataFrame(list(datum_freq.keys()))
         
         df['freq'] = list(datum_freq.values())
-        if len(df) <= 900:
+        if len(df) <= 100:
             continue
         
         Path(f'{HERE}/var/{NAME}/{date}').mkdir(exist_ok=True, parents=True)

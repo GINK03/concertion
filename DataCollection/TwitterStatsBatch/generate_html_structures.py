@@ -9,13 +9,16 @@ import pickle
 FILE = Path(__file__).name
 TOP_DIR = Path(__file__).resolve().parent.parent.parent
 HERE = Path(__file__).resolve().name
-print(FILE, TOP_DIR)
 
-# 目に見える取得済みのhtmlをciteと紐づけて保存
 def process(fn):
+    """
+    1. 目に見える取得済みのhtmlをciteと紐づけて保存
+    2. out_dir : f'{HERE}/var/generate_html_structure/'
+    """
+    Path(f'{HERE}/var/generate_html_structure/').mkdir(exist_ok=True, parents=True)
     day = Path(fn).name
     cite_html = {}
-    output_name = f'var/generate_html_structure/{day}.pkl'
+    output_name = f'{HERE}/var/generate_html_structure/{day}.pkl'
     if Path(output_name).exists():
         return
     for fn0 in glob.glob(f'{fn}/*'):
@@ -48,15 +51,14 @@ def process(fn):
 
 
 def run():
-    fns = [fn for fn in tqdm(glob.glob(f'{TOP_DIR}/var/Twitter/tweet/*'))]
+    fns = sorted([fn for fn in glob.glob(f'{TOP_DIR}/var/Twitter/tweet/*')])[-3:]
     with ProcessPoolExecutor(max_workers=16) as exe:
-        for ret in tqdm(exe.map(process, fns), total=len(fns)):
+        for ret in tqdm(exe.map(process, fns), total=len(fns), desc=f"[{FILE}] ...?"):
             ret
 
     # 別プログラムで作成したtwitter_batch_backlogに対して、取得済みを当てはめていく
-
     tmp = []
-    for fn in tqdm(glob.glob(f'{TOP_DIR}/var/twitter_batch_backlogs/*/*.csv'), desc='join csv'):
+    for fn in tqdm(glob.glob(f'{TOP_DIR}/var/twitter_batch_backlogs/*/*.csv'), desc=f'[{FILE}] join csv...'):
         path = Path(fn)
         date = path.parent.name
         df = pd.read_csv(fn)
@@ -70,7 +72,7 @@ def run():
        
     # 突合する
     cite_html = {}
-    for a_file in tqdm(glob.glob('var/generate_html_structure/*.pkl'), desc='load pickle'):
+    for a_file in tqdm(glob.glob(f'{HERE}/var/generate_html_structure/*.pkl'), desc='load pickle'):
         with open(a_file, 'rb') as fp:
             tmp_cite_html = pickle.load(fp)
         for cite, html in tmp_cite_html.items():

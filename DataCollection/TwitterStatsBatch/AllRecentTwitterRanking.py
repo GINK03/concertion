@@ -19,6 +19,7 @@ try:
     TOP_DIR = Path(__file__).resolve().parent.parent.parent
     sys.path.append(f"{PARENT_DIR}")
     import TwitterIFrames
+
     sys.path.append(f'{TOP_DIR}')
     from Web import GetDigest
 except:
@@ -27,6 +28,7 @@ except:
 HOME = E['HOME']
 
 HERE = Path(__file__).resolve().parent
+FILE = Path(__file__).name
 NAME = Path(__file__).name.replace(".py", "")
 
 
@@ -53,7 +55,7 @@ def _pre_process(json_fn):
     return link_tfs
 
 
-def pre_process():
+def pre_process(N=20000, DAYS=3):
     """
     1. 最初に普通に最新のfavからデータを処理する
     2. HOME/.mnt/favにあるデータから処理する
@@ -61,16 +63,15 @@ def pre_process():
     4. timeはマシンのunixtime時間の違いによりUTC, JSTが混在するので、JSTを優先するため、最小値を採用
     5. dateは3日前まで見る
     """
-    N = 20000
     link_tf = {}
     target_pool = sorted(glob.glob(f'{HOME}/.mnt/fav*'))[-1]
     json_fns = []
-    for user_dir in tqdm(glob.glob(f'{target_pool}/*')[-N:]):
+    for user_dir in glob.glob(f'{target_pool}/*')[-N:]:
         for json_fn in glob.glob(f'{user_dir}/*'):
             json_fns.append(json_fn)
 
     with ProcessPoolExecutor(max_workers=psutil.cpu_count()) as exe:
-        for _link_tfs in tqdm(exe.map(_pre_process, json_fns), total=len(json_fns)):
+        for _link_tfs in tqdm(exe.map(_pre_process, json_fns), total=len(json_fns), desc=f"[{FILE}] data collect recent favs from fav01 ~ favNN."):
             if _link_tfs is None:
                 continue
             for link, tf in _link_tfs:
@@ -83,7 +84,7 @@ def pre_process():
     df = pd.DataFrame({'link': list(link_tf.keys()), 'date': [tf.time.strftime("%Y-%m-%d") for tf in link_tf.values()], 'datetime': [tf.time for tf in link_tf.values()], 'freq': [tf.freq for tf in link_tf.values()]})
     df.sort_values(by=['freq'], ascending=False, inplace=True)
     df["date"] = pd.to_datetime(df["date"])
-    df = df[df["date"] >= pd.to_datetime(datetime.datetime.now().strftime("%Y-%m-%d")) - datetime.timedelta(days=3)]
+    df = df[df["date"] >= pd.to_datetime(datetime.datetime.now().strftime("%Y-%m-%d")) - datetime.timedelta(days=DAYS)]
 
     shrink: List[pd.DataTime] = []
     for date, sub in df.groupby(by=["date"]):
@@ -102,12 +103,14 @@ def put_local_html():
     for url, date in zip(df.link, df.date):
         TwitterIFrames.PutLocaHtml.put_local_html(url=url, date=date)
 
+
 def _refrect_html(arg):
-    key, objs = arg 
-    for day, digest, url in tqdm(objs):
-        ret = TwitterIFrames.ReflectHtml.reflect_html(key=key, day=day, digest=digest) 
+    key, objs = arg
+    for day, digest, url in tqdm(objs, desc=f"[{FILE}] refrect_html in mini processes..."):
+        ret = TwitterIFrames.ReflectHtml.reflect_html(key=key, day=day, digest=digest)
         if ret is None:
-            print(f'not correct works, https://concertion.page/twitter/input/{day}/{digest}')
+            print(f'[{FILE}] not correct works, https://concertion.page/twitter/input/{day}/{digest}', file=sys.stderr)
+
 
 def refrect_html():
     """
@@ -115,7 +118,7 @@ def refrect_html():
     2. keyはダミーを採用
     3. digestは共通ライブラリから使用
     """
-    NUM=psutil.cpu_count()
+    NUM = psutil.cpu_count() * 2
     df = pd.read_csv(f'{HERE}/var/{NAME}_pre_process.csv')
     df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
 
@@ -129,19 +132,17 @@ def refrect_html():
             raise Exception("day value must be %Y-%m-%d.")
         if key not in key_list:
             key_list[key] = []
-        key_list[key].append( (day, digest, url) )
-    args = [(key,objs) for key,objs in key_list.items() ]
+        key_list[key].append((day, digest, url))
+    args = [(key, objs) for key, objs in key_list.items()]
     with ProcessPoolExecutor(max_workers=NUM) as exe:
-        for ret in tqdm(exe.map(_refrect_html, args), total=len(args)):
+        for ret in tqdm(exe.map(_refrect_html, args, timeout=60*30), total=len(args), desc=f"[{FILE}] refrect_html..."):
             ret
 
 
 def post_process():
-    """
-    """
     df = pd.read_csv(f'{HERE}/var/{NAME}_pre_process.csv')
     df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
-    MAX_NUM = 500
+    MAX_NUM = 800
     for day, sub in df.groupby(by=["date"]):
         tmp = ""
         for idx, (url, freq) in enumerate(zip(sub.link, sub.freq)):
@@ -156,15 +157,25 @@ def post_process():
                         Path(f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}').unlink()
                         continue
                     soup = BeautifulSoup(html, 'lxml')
-                    sandbox_root = soup.find(attrs={'class':'SandboxRoot'})
-                    sandbox_root.find(attrs={'class':'EmbeddedTweet'})["style"] = "margin: 0 auto; margin-top: 30px;"
+                    sandbox_root = soup.find(attrs={'class': 'SandboxRoot'})
+                    sandbox_root.find(attrs={'class': 'EmbeddedTweet'})["style"] = "margin: 0 auto; margin-top: 30px;"
                     """
                     styleの最後のヘッダー外の要素を取り出して最後に追加する
                     """
                     outer_style = soup.find_all('style')[-1]
+                    """
+                    imgのURLをLocalURLに張替え
+                    """
+                    imagegrids = soup.find_all('a', {'class': 'ImageGrid-image'})
+                    for imagegrid in imagegrids:
+                        src = imagegrid.find('img').get('src')
+                        imagegrid['href'] = src
+                    images = soup.find_all('a', {'class': 'MediaCard-mediaAsset'})
+                    for image in images:
+                        src = image.find('img').get('src')
+                        image['href'] = src
                 except Exception as exc:
-                    print(exc, file=sys.stderr)
-                    print(html)
+                    print(f'[{FILE}] post_process exception, exc = {exc}', file=sys.stderr)
                 """
                 styleの読み込みは一回だけでOK
                 """
@@ -172,10 +183,11 @@ def post_process():
                     tmp += str(sandbox_root) + str(outer_style)
                 else:
                     tmp += str(sandbox_root)
-        head = f"<html><head><title>{day}</title></head><body>" 
-        tail = "</body>" 
-        with open(f'./var/htmls/{day}.html', 'w') as fp:
-            fp.write( head + tmp + tail )
+        head = f"<html><head><title>{day}</title></head><body>"
+        tail = "</body>"
+        with open(f'{HERE}/var/htmls/{day}.html', 'w') as fp:
+            fp.write(head + tmp + tail)
+
 
 def run():
     pre_process()
@@ -183,6 +195,9 @@ def run():
     refrect_html()
     post_process()
 
-if __name__ == "__main__":
-    run()
 
+if __name__ == "__main__":
+    # pre_process(N=20000, DAYS=30)
+    # put_local_html()
+    # refrect_html()
+    post_process()

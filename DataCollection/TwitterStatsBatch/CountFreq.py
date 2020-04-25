@@ -10,6 +10,7 @@ from concurrent.futures import ProcessPoolExecutor
 import datetime
 import shutil
 from os import environ as E
+import sys
 
 HOME = E.get("HOME")
 FILE = Path(__file__).name
@@ -46,9 +47,8 @@ def proc(arg):
                         datum_freq[datum] += 1
         with open(f'{HERE}/var/{NAME}/{key:06d}.pkl', 'wb') as fp:
             pickle.dump(datum_freq, fp)
-        # print('finished', key)
     except Exception as exc:
-        print(exc)
+        print(f'[{FILE}] proc exception, exc = {exc}', file=sys.stderr)
 
 
 def paralell_process(sub_dir):
@@ -67,21 +67,20 @@ def run():
     2. 必ずディレクトリを昇順にソートする
     """
     dir = sorted(glob.glob(f'{HOME}/.mnt/fav*'))[-1]
-    print(dir)
+    print(f'[{FILE}] run, target dir = {dir}')
     """
     1. 直近3日前までのデータに限定して対象のディレクトリをsub_dirsに追加
     2. btrfsの場合、古いディレクトリほどglob.globでスキャンしたときに前方に来るので、それを利用して末尾のN件を処理対象とする
     """
-    arg_dirs = list(glob.glob(f'{dir}/*'))[-10000:]
-    print('debug', len(arg_dirs))
+    N = 20000
+    arg_dirs = list(glob.glob(f'{dir}/*'))[-N:]
     with ThreadPoolExecutor(max_workers=100) as exe:
-        for ret in tqdm(exe.map(paralell_process, arg_dirs), total=len(arg_dirs), desc=f"ScanSubDirs name = {Path(dir).name}"):
+        for ret in tqdm(exe.map(paralell_process, arg_dirs), total=len(arg_dirs), desc=f"[{FILE}] ScanSubDirs name = {Path(dir).name}"):
             if ret is None:
                 continue
             sub_dirs.append(ret)
-    print('debug', len(sub_dirs))
 
-    print('start to create args...')
+    print(f'[{FILE}] start to create args...')
     SPLIT = max(len(sub_dirs)//100, 1)
     args = {}
     for idx, sub_dir in enumerate(sub_dirs):
@@ -90,8 +89,7 @@ def run():
             args[key] = []
         args[key].append(sub_dir)
     args = [(key, sub_dirs) for key, sub_dirs in args.items()]
-    print('finish to create args...')
-    # This is output dir
+    print(f'[{FILE}] finish to create args...')
     """
     1. なんのツイートが何回favされたかを観測
     2. chunkでaggregateして次のプロセスでうまく処理する
@@ -100,9 +98,8 @@ def run():
     if Path(out_dir).exists():
         shutil.rmtree(out_dir)
     Path(out_dir).mkdir(exist_ok=True, parents=True)
-    # [proc(arg) for arg in args]
     with ProcessPoolExecutor(max_workers=16) as exe:
-        for ret in tqdm(exe.map(proc, args), total=len(args), desc="ParallelRun"):
+        for ret in tqdm(exe.map(proc, args), total=len(args), desc=f"[{FILE}] ParallelRun of proc..."):
             ret
 
 

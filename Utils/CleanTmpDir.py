@@ -3,8 +3,13 @@ from pathlib import Path
 import shutil
 import sys
 
+FILE = Path(__file__).name
 
 def run():
+    """
+    tmpディレクトリも書き込み数が有限であるのであまりに書き込むとOSがクラッシュする。
+    定期的にchromeなどの一時ファイルをクリアする
+    """
     for fn in glob.glob(f"/tmp/*") + glob.glob(f"/tmp/.*"):
         is_dir = Path(fn).is_dir()
         stat = Path(fn).stat()
@@ -19,9 +24,8 @@ def run():
                 try:
                     Path(fn).unlink()
                 except Exception as exc:
-                    print(exc, file=sys.stderr)
+                    print(f'[{FILE}] exc = {exc}', file=sys.stderr)
                 continue
-        print("skip", fn, stat)
 
 
 if __name__ == "__main__":
