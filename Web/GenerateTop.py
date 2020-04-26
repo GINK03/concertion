@@ -20,10 +20,13 @@ except Exception as exc:
     raise Exception(exc)
 
 def get_buzz_tweet() -> str:
+    """
+    最新のtweetの取得リストから, 最新の取得したツイート(aka. 最後尾のツイート)を取得する
+    """
     from bs4 import BeautifulSoup
     dir_fn = sorted(glob.glob(f'{TOP_FOLDER}/var/Twitter/tweet/*'))[-1]
     buzzes = []
-    for idx, fn in enumerate(glob.glob(f'{dir_fn}/*')[:10]):
+    for idx, fn in enumerate(glob.glob(f'{dir_fn}/*')[-10:]):
         try:
             html = open(fn).read()
             soup = BeautifulSoup(html, features='lxml')

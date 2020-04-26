@@ -162,9 +162,10 @@ def glob_fs_and_work(NUM=300):
     1. 最新のタイムディレクトリのうちランダムでツイートを取得する
     """
     day_dir = sorted(glob.glob(f'{TOP_DIR}/var/Twitter/input/*'))[-1]
+    # print(day_dir)
     tweet_files = glob.glob(f'{day_dir}/*')
-    random.shuffle(tweet_files)
-    tweet_files = tweet_files[:NUM]
+    # random.shuffle(tweet_files)
+    # tweet_files = tweet_files[:NUM]
 
     args = [(idx%16, tweet_file) for idx,tweet_file in enumerate(tweet_files)]
     try:

@@ -73,6 +73,7 @@ def read_csv_and_put_to_local():
     df = pd.read_csv(f'{TOP_DIR}/var/FetchRecentBuzzTweets.csv')
     df = df[df.freq >= 2]
     df = df.head(20)
+    # print(df)
     for url, date in zip(df.link, df.date):
         put_local_html(url, date)
 

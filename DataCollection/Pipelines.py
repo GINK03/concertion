@@ -86,17 +86,7 @@ def run_suit():
     最新の流行ったツイートを集計して表示できるようにする
     """
     try:
-        TwitterIFrames.FetchRecentBuzzTweets.run()
-    except Exception as exc:
-        print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] error occured {exc}', file=sys.stderr)
-
-    try:
-        TwitterIFrames.PutLocaHtml.read_csv_and_put_to_local()
-    except Exception as exc:
-        print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] error occured {exc}', file=sys.stderr)
-
-    try:
-        TwitterIFrames.ReflectHtml.glob_fs_and_work()
+        TwitterIFrames.WrapRecentBuzzTweets.run()
     except Exception as exc:
         print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] error occured {exc}', file=sys.stderr)
     
