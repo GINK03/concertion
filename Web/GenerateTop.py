@@ -56,6 +56,8 @@ def generate_top() -> str:
     body = ''
     # titleとか
     body += '<h1>Concertion.Page SNS時代のバックログと評論</h1>'
+    body += '<p><a href="/recent_uraaka">最近人気の裏垢</a></p>'
+    body += '<p><a href="/backlog_of_uraaka">過去の裏垢のバックログ</a></p>'
     body += '<p><a href="/user_favorited_ranking">ツイッターでファボされた人ランキング</a></p>'
     body += '<p><a href="/daily_yj_ranking_list">過去Yahoo Newsで流行ったログ</a></p>'
     

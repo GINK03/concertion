@@ -1,6 +1,6 @@
 import gzip
 import pickle
-from flask import Flask, request, jsonify, render_template, make_response
+from flask import Flask, request, jsonify, render_template, make_response, abort
 import json
 import requests
 from pathlib import Path
@@ -9,6 +9,7 @@ from hashlib import sha256
 import pandas as pd
 from collections import namedtuple
 import sys
+
 FILE = Path(__file__).name
 TOP_DIR = Path(__file__).resolve().parent.parent.parent
 application = Flask(__name__)
@@ -24,11 +25,14 @@ try:
 
     from Web import GetDay
     from Web import GenerateDailyYJAbstracts
+    from Web import recent_uraaka
 except Exception as exc:
     print(exc)
     raise Exception(exc)
 
 print(f'[{FILE}] {Hostname.hostname()}')
+
+
 @application.route("/")
 def home():
     return GenerateTop.generate_top()
@@ -39,10 +43,40 @@ def daily_yj_abstracts(name):
     return GenerateDailyYJAbstracts.generate_daily_yj_abstracts(name)
 
 
+@application.route('/recent_uraaka')
+def recent_uraaka_():
+    return recent_uraaka.recent_uraaka()
+
+
+@application.route("/backlog_of_uraaka", methods=['get'])
+def backlog_of_uraaka():
+    import glob
+
+    head = '<html><head><title>backlog of uraaka</title></head><body>'
+    body = ''
+    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/裏垢女子_50000/htmls/*'))):
+        name = Path(fn).name
+        date = name.replace(".html", "")
+        tmp = f'''<a href="/backlog_of_uraaka/{name}">{date}</a><br>'''
+        body += tmp
+    tail = '</body></html>'
+    html = head + body + tail
+    return html
+
+
+@application.route("/backlog_of_uraaka/<name>", methods=['get'])
+def backlog_of_uraaka_name(name):
+    fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/裏垢女子_50000/htmls/{name}'
+    with open(fn) as fp:
+        html = fp.read()
+    return html
+
+
 @application.route("/get_day/<day>", methods=['GET'])
 def get_day(day):
     data = Base64EncodeDecode.string_base64_pickle(request.args['serialized'])
     return GetDay.get_day_html(day, data)
+
 
 @application.route("/sitemap", methods=['GET'])
 @application.route("/sitemap.txt", methods=['GET'])
@@ -50,6 +84,7 @@ def sitemap():
     with open(f'{TOP_DIR}/var/sitemap.txt') as fp:
         html = fp.read()
     return html
+
 
 @application.route("/user_favorited_ranking", methods=['GET'])
 def user_favorited_ranking():
@@ -66,6 +101,7 @@ def daily_yj_ranking_list():
 @application.route("/backlog_of_twitter", methods=['get'])
 def backlog_of_twitter():
     import glob
+
     head = '<html><head><title>backlog of twitter</title></head><body>'
     body = ''
     for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/htmls/*'))):
@@ -104,24 +140,27 @@ def twitter_tweet(day, digest):
 
 @application.route("/twitter/<typed>/<digest>")
 def twitter(typed, digest):
-    print(digest)
-    if typed in {'tweet', 'css', 'input'}:
-        with open(f'{TOP_DIR}/var/Twitter/{typed}/{digest}') as fp:
-            html = fp.read()
-        return html
-    elif typed in {'jpg', 'jpgs'}:
-        with open(f'{TOP_DIR}/var/Twitter/jpgs/{digest}', 'rb') as fp:
-            binary = fp.read()
-        response = make_response(binary)
-        response.headers.set('Content-Type', 'image/jpeg')
-        return response
-    elif typed in {'png', 'pngs'}:
-        with open(f'{TOP_DIR}/var/Twitter/pngs/{digest}', 'rb') as fp:
-            binary = fp.read()
-        response = make_response(binary)
-        response.headers.set('Content-Type', 'image/png')
-        return response
-
+    # print(digest)
+    try:
+        if typed in {'tweet', 'css', 'input'}:
+            with open(f'{TOP_DIR}/var/Twitter/{typed}/{digest}') as fp:
+                html = fp.read()
+            return html
+        elif typed in {'jpg', 'jpgs'}:
+            with open(f'{TOP_DIR}/var/Twitter/jpgs/{digest}', 'rb') as fp:
+                binary = fp.read()
+            response = make_response(binary)
+            response.headers.set('Content-Type', 'image/jpeg')
+            return response
+        elif typed in {'png', 'pngs'}:
+            with open(f'{TOP_DIR}/var/Twitter/pngs/{digest}', 'rb') as fp:
+                binary = fp.read()
+            response = make_response(binary)
+            response.headers.set('Content-Type', 'image/png')
+            return response
+    except Exception as exc:
+        print(exc)
+        return abort(404)
 
 @application.route("/gyo")
 def gyo():
