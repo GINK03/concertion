@@ -9,6 +9,7 @@ from hashlib import sha256
 import pandas as pd
 from collections import namedtuple
 import sys
+import glob
 
 FILE = Path(__file__).name
 TOP_DIR = Path(__file__).resolve().parent.parent.parent
@@ -26,6 +27,9 @@ try:
     from Web import GetDay
     from Web import GenerateDailyYJAbstracts
     from Web import recent_uraaka
+    from Web import recent_guradoru
+    from Web import recent_corona
+    from Web import recent_kawaii
 except Exception as exc:
     print(exc)
     raise Exception(exc)
@@ -48,10 +52,21 @@ def recent_uraaka_():
     return recent_uraaka.recent_uraaka()
 
 
+@application.route('/recent_guradoru')
+def recent_guradoru_():
+    return recent_guradoru.recent_guradoru()
+
+
+@application.route('/recent_corona')
+def recent_corona_():
+    return recent_corona.recent_corona()
+
+@application.route('/recent_kawaii')
+def recent_kawaii_():
+    return recent_kawaii.recent_kawaii()
+
 @application.route("/backlog_of_uraaka", methods=['get'])
 def backlog_of_uraaka():
-    import glob
-
     head = '<html><head><title>backlog of uraaka</title></head><body>'
     body = ''
     for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/裏垢女子_50000/htmls/*'))):
@@ -67,6 +82,69 @@ def backlog_of_uraaka():
 @application.route("/backlog_of_uraaka/<name>", methods=['get'])
 def backlog_of_uraaka_name(name):
     fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/裏垢女子_50000/htmls/{name}'
+    with open(fn) as fp:
+        html = fp.read()
+    return html
+
+@application.route("/backlog_of_guradoru", methods=['get'])
+def backlog_of_guradoru():
+    head = '<html><head><title>backlog of guradoru</title></head><body>'
+    body = ''
+    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/グラドル_50000/htmls/*'))):
+        name = Path(fn).name
+        date = name.replace(".html", "")
+        tmp = f'''<a href="/backlog_of_guradoru/{name}">{date}</a><br>'''
+        body += tmp
+    tail = '</body></html>'
+    html = head + body + tail
+    return html
+
+
+@application.route("/backlog_of_guradoru/<name>", methods=['get'])
+def backlog_of_guradoru_name(name):
+    fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/グラドル_50000/htmls/{name}'
+    with open(fn) as fp:
+        html = fp.read()
+    return html
+
+@application.route("/backlog_of_corona", methods=['get'])
+def backlog_of_corona():
+    head = '<html><head><title>backlog of corona</title></head><body>'
+    body = ''
+    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/同人_50000/htmls/*'))):
+        name = Path(fn).name
+        date = name.replace(".html", "")
+        tmp = f'''<a href="/backlog_of_corona/{name}">{date}</a><br>'''
+        body += tmp
+    tail = '</body></html>'
+    html = head + body + tail
+    return html
+
+
+@application.route("/backlog_of_corona/<name>", methods=['get'])
+def backlog_of_corona_name(name):
+    fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/同人_50000/htmls/{name}'
+    with open(fn) as fp:
+        html = fp.read()
+    return html
+
+@application.route("/backlog_of_kawaii", methods=['get'])
+def backlog_of_kawaii():
+    head = '<html><head><title>backlog of kawaii</title></head><body>'
+    body = ''
+    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/可愛い_50000/htmls/*'))):
+        name = Path(fn).name
+        date = name.replace(".html", "")
+        tmp = f'''<a href="/backlog_of_kawaii/{name}">{date}</a><br>'''
+        body += tmp
+    tail = '</body></html>'
+    html = head + body + tail
+    return html
+
+
+@application.route("/backlog_of_kawaii/<name>", methods=['get'])
+def backlog_of_kawaii_name(name):
+    fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/可愛い_50000/htmls/{name}'
     with open(fn) as fp:
         html = fp.read()
     return html
@@ -161,6 +239,7 @@ def twitter(typed, digest):
     except Exception as exc:
         print(exc)
         return abort(404)
+
 
 @application.route("/gyo")
 def gyo():

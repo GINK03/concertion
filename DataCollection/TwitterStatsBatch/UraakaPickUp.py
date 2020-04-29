@@ -1,3 +1,5 @@
+import time
+import schedule
 import requests
 import datetime
 from dataclasses import dataclass, asdict, astuple
@@ -127,13 +129,14 @@ def statical_pickup(count=20000, keyword="裏垢"):
     term_freq, term_freq2 = {}, {}
     cnt, cnt2 = 0, 0
 
-    most_recent_disk = glob.glob(f"{HOME}/.mnt/favs*")[-1]
-    # args = [(keyword, user_dir) for user_dir in glob.glob(f"{most_recent_disk}/*")[-count:]]
+    most_recent_disk = sorted(glob.glob(f"{HOME}/.mnt/favs*"))[-1]
+    print(f"[{FILE}] target disk is {most_recent_disk}")
+    args = [(keyword, user_dir) for user_dir in glob.glob(f"{most_recent_disk}/*")[-count:]]
     """ this is adhoc """
-    args = [(keyword, user_dir) for user_dir in glob.glob(f"{HOME}/.mnt/favs*/*")[-count:]]
+    # args = [(keyword, user_dir) for user_dir in glob.glob(f"{HOME}/.mnt/favs02/*")[-count:]]
 
     with ProcessPoolExecutor(max_workers=psutil.cpu_count()) as exe:
-        for _term_freq, _cnt, _term_freq2, _cnt2 in tqdm(exe.map(_statical_pick_up, args), total=len(args), desc=f"[{FILW}] statical_pickup..."):
+        for _term_freq, _cnt, _term_freq2, _cnt2 in tqdm(exe.map(_statical_pick_up, args), total=len(args), desc=f"[{FILE}] statical_pickup..."):
             cnt += _cnt
             for term, freq in _term_freq.items():
                 if term not in term_freq:
@@ -242,20 +245,30 @@ def find_joinable_tweet_ids(count=20000):
         keyword_name = re.search(r'pics_(.{1,}).csv', pic_csv_file).group(1)
 
         photos: Set[str] = set()
-        
+
         df = pd.read_csv(pic_csv_file)
         # df = df[df.rel >= 0.93]
         photos |= set(df.term.tolist())
-        most_recent_disk = glob.glob(f"{HOME}/.mnt/favs*")[-1]
+        """ fav00 ~  favXXまでナンバリングされている """
+        most_recent_disk = sorted(glob.glob(f"{HOME}/.mnt/favs*"))[-1]
         args = [(user_dir) for user_dir in tqdm(glob.glob(f"{most_recent_disk}/*")[-count:], desc=f"[{FILE}] scan files in find_joinable_tweet_ids...")]
 
         link_dlp = {}
         with ProcessPoolExecutor(max_workers=psutil.cpu_count()) as exe:
-            for _rets in tqdm(exe.map(_find_joinable_tweet_ids, args), total=len(args), desc=f"[{FILE}] joining photo url <-> tweet id..."):
+            for _rets in tqdm(exe.map(_find_joinable_tweet_ids, args), total=len(args), desc=f"[{FILE}][{keyword_name}] joining photo url <-> tweet id..."):
                 for link, dlp in _rets:
-                    if len(photos & set(dlp.photos)) != 0:
-                        if link not in link_dlp:
+                    """
+                    1. 特定のキーワードかそれ以外で動作を分ける
+                    NOTE: "コロナ"のとき、画像以外も対象で、likes_count >= 100とする
+                    """
+                    if "コロナ" in keyword_name:
+                        if dlp.likes_count >= 100:
                             link_dlp[link] = dlp
+                    else:
+                        if len(photos & set(dlp.photos)) != 0:
+                            if link not in link_dlp:
+                                link_dlp[link] = dlp
+
         df = pd.DataFrame({"link": list(link_dlp.keys()), "photos": [dlp.photos for dlp in link_dlp.values()], "likes_count": [dlp.likes_count for dlp in link_dlp.values()], "date": [dlp.date for dlp in link_dlp.values()]})
         df["photos"] = df["photos"].apply(json.dumps)
         df.to_csv(f"{HERE}/var/{NAME}/link_photos_date_likes_{keyword_name}.csv", index=None)
@@ -288,8 +301,9 @@ def refrect_html(N=10000):
     1. ../TwitterIFrames/ReflectHtml.pyを呼び出す
     2. keyはダミーを採用
     3. digestは共通ライブラリから使用
+    4. NUM(プロセス数)はコア数の3倍を想定
     """
-    NUM = psutil.cpu_count() * 2
+    NUM = psutil.cpu_count() * 3
     for csv_file in glob.glob(f"{HERE}/var/{NAME}/link_photos_date_likes_*.csv"):
         keyword_name = re.search(r"link_photos_date_likes_(.{1,}).csv", csv_file).group(1)
         df = pd.read_csv(csv_file)
@@ -299,7 +313,12 @@ def refrect_html(N=10000):
         df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
 
         key_list: Dict[int, List[Tuple[str, str, str]]] = {}
-        for idx, (url, day) in enumerate(zip(df.link, df.date)):
+        """
+        一様にシャッフルしないと一部のProcessに負荷が偏りすぎる（おそらくhtml取得の失敗が再現されてしまうため）
+        """
+        urldays = [(url, day) for url, day in zip(df.link, df.date)]
+        random.shuffle(urldays)
+        for idx, (url, day) in enumerate(urldays):
             key = idx % NUM
             digest = GetDigest.get_digest(url)
             if not isinstance(day, str):
@@ -388,8 +407,17 @@ def post_process(N=10000):
                         tmp += _tmp
             head = f"<html><head><title>{day}</title></head><body>"
             tail = "</body>"
-            with open(f'{HERE}/var/{NAME}/{keyword_name}/htmls/{day}.html', 'w') as fp:
-                fp.write(head + tmp + tail)
+            if not Path(f"{HERE}/var/{NAME}/{keyword_name}/htmls/{day}.html").exists():
+                with open(f'{HERE}/var/{NAME}/{keyword_name}/htmls/{day}.html', 'w') as fp:
+                    fp.write(head + tmp + tail)
+            else:
+                """
+                1. もしデータのサイズが今回サンプルしたほうが大きければ上書き
+                2. なぜなら、直近の50000件にサンプルが限定される
+                """
+                if len(head + tmp + tail) >= len(open(f'{HERE}/var/{NAME}/{keyword_name}/htmls/{day}.html').read()):
+                    with open(f'{HERE}/var/{NAME}/{keyword_name}/htmls/{day}.html', 'w') as fp:
+                        fp.write(head + tmp + tail)
 
 
 def _post_process_recent(arg):
@@ -419,29 +447,44 @@ def _post_process_recent(arg):
 
                 soup = BeautifulSoup(html, 'lxml')
                 sandbox_root = soup.find(attrs={'class': 'SandboxRoot'})
+                """
+                EmbeddedTweetのコンテンツがない場合、取得できていないことになる
+                """
+                if sandbox_root.find(attrs={'class': 'EmbeddedTweet'}) is None:
+                    raise Exception("There is no Tweet contents.")
                 sandbox_root.find(attrs={'class': 'EmbeddedTweet'})["style"] = "margin: 0 auto; margin-top: 30px;"
                 """
                 styleの最後のヘッダー外の要素を取り出して最後に追加する
                 """
-                outer_style = soup.find_all('style')[-1]
+                outer_style = soup.find_all('style')[-1] if len(soup.find_all('style')) > 0 else ""
 
                 """
                 1. hueristics
                 """
-                xa = soup.find(attrs={'class': 'Tweet-card'}).find_all('a')  # , {'class': 'MediaCard-mediaAsset'})
-                for a in xa:
-                    a['href'] = f'/twitter/jpgs/{original_image_digests[0]}'
-                    a["target"] = "_blank"
+                if soup.find(attrs={'class': 'Tweet-card'}):
+                    xa = soup.find(attrs={'class': 'Tweet-card'}).find_all('a')  # , {'class': 'MediaCard-mediaAsset'})
+                    for a in xa:
+                        a["target"] = "_blank"
+                        if len(original_image_digests) > 0:
+                            a['href'] = f'/twitter/jpgs/{original_image_digests[0]}'
                 """
                 2. imgのURLをLocalURLに張替え
                 """
-                imagegrids = soup.find_all('a', {'class': 'ImageGrid-image'})
-                for imagegrid, original_image_digest in zip(imagegrids, original_image_digests):
-                    src = imagegrid.find('img').get('src')
-                    # imagegrid['href'] = src
-                    imagegrid['href'] = f'/twitter/jpgs/{original_image_digest}'
+                if soup.find('a', {'class': 'ImageGrid-image'}):
+                    imagegrids = soup.find_all('a', {'class': 'ImageGrid-image'})
+                    for imagegrid, original_image_digest in zip(imagegrids, original_image_digests):
+                        src = imagegrid.find('img').get('src')
+                        # imagegrid['href'] = src
+                        imagegrid['href'] = f'/twitter/jpgs/{original_image_digest}'
             except Exception as exc:
-                print(f'[{FILE}] post_process exception, exc = {exc}', file=sys.stderr)
+                lineno = sys.exc_info()[2].tb_lineno
+                print(f'[{FILE}] post_process exception, exc = {exc}, url = {url}, line = {lineno}', file=sys.stderr)
+                """
+                1. NoneType object is not support assignmentが出ることがあり、htmlが不完全だと思われる
+                2. 不完全なhtmlは持っていても仕方がない + 再取得したほうがいいのでunlinkする
+                """
+                # print(html)
+                Path(f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}').unlink()
             """
             styleの読み込みは一回だけでOK
             """
@@ -477,20 +520,33 @@ def post_process_recent():
             for _tmp in exe.map(_post_process_recent, args):
                 if _tmp is not None:
                     tmp += _tmp
-
-        head = f"<html><head><title>{day}</title></head><body>"
+        head = f"<html><head><title>最新 {keyword_name}</title></head><body>"
         tail = "</body>"
         with open(f'{HERE}/var/{NAME}/recent_{keyword_name}.html', 'w') as fp:
             fp.write(head + tmp + tail)
 
 
-if __name__ == "__main__":
-    statical_pickup(count=5000000, keyword="裏垢女子")
-    # filter_statical_pickup()
-    # find_joinable_tweet_ids(count=50000)
-    # put_local_html()
-    # refrect_html()
-    # get_imgs()
+def run():
+    statical_pickup(count=50000, keyword="裏垢女子")
+    statical_pickup(count=50000, keyword="グラドル")
+    statical_pickup(count=50000, keyword="同人")
+    statical_pickup(count=50000, keyword="可愛い")
+    filter_statical_pickup()
+    find_joinable_tweet_ids(count=50000)
+    put_local_html()
+    refrect_html()
+    get_imgs()
+    post_process_recent()
+    post_process()
 
-    # post_process_recent()
-    # post_process()
+
+if __name__ == "__main__":
+    """
+    1. このプログラムを単体で実行すると、4時間ごとにデータを収集して更新する
+    """
+    run()
+    schedule.every(4).hours.do(run)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+

@@ -23,6 +23,7 @@ def job():
                     f' --certfile {HOME}/.var/fullchain.pem' \
                     f' --access-logfile {TOP_FOLDER}/var/log/access_{now}.log' \
                     f' --error-logfile {TOP_FOLDER}/var/log/error_{now}.log'
+        print(cmd)
         os.system(cmd)
     except Exception as exc:
         print(exc)
