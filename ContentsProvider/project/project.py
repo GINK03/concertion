@@ -10,6 +10,8 @@ import pandas as pd
 from collections import namedtuple
 import sys
 import glob
+import os
+from flask_dance.contrib.twitter import make_twitter_blueprint, twitter
 
 FILE = Path(__file__).name
 TOP_DIR = Path(__file__).resolve().parent.parent.parent
@@ -26,20 +28,49 @@ try:
 
     from Web import GetDay
     from Web import GenerateDailyYJAbstracts
+    from Web import Login
     from Web import recent_uraaka
     from Web import recent_guradoru
     from Web import recent_corona
     from Web import recent_kawaii
 except Exception as exc:
-    print(exc)
-    raise Exception(exc)
+    raise Exception(f"[{FILE}] import error exc = {exc}")
 
-print(f'[{FILE}] {Hostname.hostname()}')
+try:
+    """ TwitterAPIのインポート """
+    TWITTER_API_KEY = os.environ['TWITTER_API_KEY']
+    TWITTER_API_SECRET = os.environ['TWITTER_API_SECRET']
+    TWITTER_ACCESS_TOKEN = os.environ['TWITTER_ACCESS_TOKEN']
+    TWITTER_ACCESS_TOKEN_SECRET = os.environ['TWITTER_ACCESS_TOKEN_SECRET']
+except Exception as exc:
+    raise Exception(f"[{FILE}] there are missing of environ parameters of twitter apps, exc = {exc}")
+
+try:
+    """ flask_danceでTwitter OAuth機能を有効化"""
+    application.secret_key = "supersekrit"
+    blueprint = make_twitter_blueprint(api_key=TWITTER_API_KEY, api_secret=TWITTER_API_SECRET, redirect_url='/', redirect_to='/')
+    application.register_blueprint(blueprint, url_prefix='/login')
+    application.config["UPLOAD_FOLDER"] = 'uploads'
+except Exception as exc:
+    raise Exception(f"[{FILE}] there are something wrong with flask_dance, exc = {exc}")
+print(f'[{FILE}] current hostname = {Hostname.hostname()}', file=sys.stdout)
 
 
 @application.route("/")
-def home():
-    return GenerateTop.generate_top()
+def home() -> str:
+    """
+    トップ画面, GenerateTopにtwitterの認証情報を入力
+    Args:
+        - nothing
+    Returns:
+        - str: HTMLを返す
+    """
+    return GenerateTop.generate_top(twitter)
+
+
+@application.route("/login")
+def login():
+    return Login.login()
 
 
 @application.route('/daily_yj_abstracts/<name>')
@@ -61,9 +92,11 @@ def recent_guradoru_():
 def recent_corona_():
     return recent_corona.recent_corona()
 
+
 @application.route('/recent_kawaii')
 def recent_kawaii_():
     return recent_kawaii.recent_kawaii()
+
 
 @application.route("/backlog_of_uraaka", methods=['get'])
 def backlog_of_uraaka():
@@ -86,6 +119,7 @@ def backlog_of_uraaka_name(name):
         html = fp.read()
     return html
 
+
 @application.route("/backlog_of_guradoru", methods=['get'])
 def backlog_of_guradoru():
     head = '<html><head><title>backlog of guradoru</title></head><body>'
@@ -107,6 +141,7 @@ def backlog_of_guradoru_name(name):
         html = fp.read()
     return html
 
+
 @application.route("/backlog_of_corona", methods=['get'])
 def backlog_of_corona():
     head = '<html><head><title>backlog of corona</title></head><body>'
@@ -127,6 +162,7 @@ def backlog_of_corona_name(name):
     with open(fn) as fp:
         html = fp.read()
     return html
+
 
 @application.route("/backlog_of_kawaii", methods=['get'])
 def backlog_of_kawaii():
@@ -217,7 +253,7 @@ def twitter_tweet(day, digest):
 
 
 @application.route("/twitter/<typed>/<digest>")
-def twitter(typed, digest):
+def twitter_(typed, digest):
     # print(digest)
     try:
         if typed in {'tweet', 'css', 'input'}:
@@ -273,22 +309,50 @@ def blobs(digest):
     return 'ok'
 
 
-@application.route("/blobs_yj/<digest>", methods=['GET'])
-def blobs_yj(digest):
-    with open(f'{TOP_DIR}/var/Gyo/blobs/{digest}', 'rb') as fp:
-        try:
-            data_type = pickle.loads(gzip.decompress(fp.read()))
-        except EOFError:
-            Path(f'{TOP_DIR}/var/Gyo/blobs/{digest}').unlink()
-            return 'ng.'
-    if data_type.type == bytes:
-        response = make_response(data_type.data)
-        response.headers.set('Content-Type', 'image/jpeg')
-        return response
-    elif data_type.type == str:
-        html = data_type.data
-        return AdhocYJHtmlReplace.yj_html_replace(html, digest)
-    return 'ok'
+@application.route("/blobs_yj/<digest>", methods=['GET', "POST"])
+def blobs_yj(digest: str) -> str:
+    """
+    Args:
+        - digest: YahooNewsのハッシュ値
+    Return:
+        - str: html, 失敗したら失敗した内容を記述
+    Posts:
+        - YJSubmit: Submit
+        - YJComment: str
+            - コメントが有る場合、コメントををまず保存する
+    """
+    if request.method == 'POST':
+        obj = request.form
+        if obj.get("YJComment"):
+            YJComment = obj["YJComment"]
+            out_dir = f"{TOP_DIR}/var/YJ/YJComment/{digest}"
+            Path(out_dir).mkdir(exist_ok=True, parents=True)
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(f"{out_dir}/{now}", "w") as fp:
+                if twitter.authorized:
+                    json.dump({"YJComment": YJComment, "datetime":now, "screen_name": twitter.token["screen_name"]}, fp, ensure_ascii=False)
+                else:
+                    json.dump({"YJComment": YJComment, "datetime":now, "screen_name": "名無しちゃん"}, fp, ensure_ascii=False)
+
+    try:
+        with open(f'{TOP_DIR}/var/Gyo/blobs/{digest}', 'rb') as fp:
+            try:
+                data_type = pickle.loads(gzip.decompress(fp.read()))
+            except EOFError:
+                Path(f'{TOP_DIR}/var/Gyo/blobs/{digest}').unlink()
+                return 'ng.'
+        if data_type.type == bytes:
+            response = make_response(data_type.data)
+            response.headers.set('Content-Type', 'image/jpeg')
+            return response
+        elif data_type.type == str:
+            html = data_type.data
+            return AdhocYJHtmlReplace.yj_html_replace(html, digest)
+        return 'ok'
+    except Exception as exc:
+        tb_lineno = sys.exc_info()[2].tb_lineno
+        print(f"[{FILE}] exc = {exc}, tb_lineno = {tb_lineno}", file=sys.stderr)
+        return "ng"
 
 
 if __name__ == "__main__":

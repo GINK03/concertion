@@ -7,6 +7,7 @@ import glob
 import json
 import sys
 from os import environ as E
+import os
 import MeCab
 from tqdm import tqdm
 import pandas as pd
@@ -49,7 +50,6 @@ def _statical_pick_up(arg):
     cnt = 0
     cnt2 = 0
     for json_fn in glob.glob(f"{user_dir}/*"):
-        # print(json_fn)
         try:
             tweets = []
             for line in open(json_fn):
@@ -58,7 +58,6 @@ def _statical_pick_up(arg):
                     obj = json.loads(line)
                 except:
                     continue
-                # print(obj)
                 tweets.append(Tweet(obj["tweet"], f"@{obj['username']}", obj["photos"]))
         except:
             continue
@@ -114,18 +113,14 @@ def _statical_pick_up(arg):
     return term_freq, cnt, term_freq2, cnt2
 
 
-# @click.command()
-# @click.option('--count', default=250000, help='Number of sampling users.')
-# @click.option('--keyword', default='裏垢', help='対象キーワード')
 def statical_pickup(count=20000, keyword="裏垢"):
     """
     1. 統計的な手法によりkeywordを使用するアカウントをそれ以外の分布から比較して大きいアカウント、単語、写真を取り出す
     2. 後処理が必要
     """
-    print(f"keyword={keyword}, sampling_size={count}で処理を開始します")
+    print(f"[{FILE}] keyword={keyword}, sampling_size={count}で処理を開始します")
 
     Path(f"{HERE}/var/{NAME}/results").mkdir(exist_ok=True, parents=True)
-    print(f"{HERE}/var/{NAME}/results")
     term_freq, term_freq2 = {}, {}
     cnt, cnt2 = 0, 0
 
@@ -133,8 +128,6 @@ def statical_pickup(count=20000, keyword="裏垢"):
     print(f"[{FILE}] target disk is {most_recent_disk}")
     args = [(keyword, user_dir) for user_dir in glob.glob(f"{most_recent_disk}/*")[-count:]]
     """ this is adhoc """
-    # args = [(keyword, user_dir) for user_dir in glob.glob(f"{HOME}/.mnt/favs02/*")[-count:]]
-
     with ProcessPoolExecutor(max_workers=psutil.cpu_count()) as exe:
         for _term_freq, _cnt, _term_freq2, _cnt2 in tqdm(exe.map(_statical_pick_up, args), total=len(args), desc=f"[{FILE}] statical_pickup..."):
             cnt += _cnt
@@ -181,7 +174,6 @@ def filter_statical_pickup():
         df1 = df[df["term"].apply(lambda x: "@" in str(x))]
         t1 = sorted(df1[df1.rel >= 0.5].total.tolist())
         th = t1[int(len(t1) * 9 / 10)]
-        print(th)
         df1 = df1[df1["total"] >= th]
         df1.to_csv(f"{HERE}/var/{NAME}/filter/users_{name}", index=None)
 
@@ -189,7 +181,6 @@ def filter_statical_pickup():
         df2 = df[df["term"].apply(lambda x: "@" not in str(x) and ".jpg" not in str(x))]
         t2 = sorted(df2[df2.rel >= 0.5].total.tolist())
         th = t2[int(len(t2) * 9 / 10)]
-        print(th)
         df2 = df2[df2["total"] >= th]
         df2.to_csv(f"{HERE}/var/{NAME}/filter/terms_{name}", index=None)
 
@@ -197,7 +188,6 @@ def filter_statical_pickup():
         df3 = df[df["term"].apply(lambda x: ".jpg" in str(x))]
         t3 = sorted(df3[df3.rel >= 0.5].total.tolist())
         th = t3[int(len(t3) * 3 / 10)]
-        # print(th)
         df3 = df3[df3["total"] >= 10]
         df3 = df3[df3["total"] >= th]
         df3 = df3[df["rel"] >= 0.90]
@@ -329,10 +319,12 @@ def refrect_html(N=10000):
                 key_list[key] = []
             key_list[key].append((day, digest, url))
         args = [(key, objs) for key, objs in key_list.items()]
-        with ProcessPoolExecutor(max_workers=NUM) as exe:
-            for ret in tqdm(exe.map(_refrect_html, args, timeout=60 * 30), total=len(args), desc=f"[{FILE}][{keyword_name}]refrect_html..."):
-                ret
-
+        try:
+            with ProcessPoolExecutor(max_workers=NUM) as exe:
+                for ret in tqdm(exe.map(_refrect_html, args, timeout=60 * 30), total=len(args), desc=f"[{FILE}][{keyword_name}]refrect_html..."):
+                    ret
+        except Exception as exc:
+            print(f'[{FILE}][{keyword_name}] error occured in parallel refrect_html, exc = {exc}', file=sys.stderr)
 
 def _get_imgs(arg):
     link, photos = arg
@@ -527,6 +519,10 @@ def post_process_recent():
 
 
 def run():
+    """
+    1. chromedriverが終了しないので強制終了する
+    """
+    os.system("pgrep chrome | xargs kill -9")
     statical_pickup(count=50000, keyword="裏垢女子")
     statical_pickup(count=50000, keyword="グラドル")
     statical_pickup(count=50000, keyword="同人")
