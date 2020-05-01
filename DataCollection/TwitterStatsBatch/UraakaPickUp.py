@@ -20,6 +20,7 @@ import click
 import psutil
 from bs4 import BeautifulSoup
 from typing import Tuple, Union, Dict, List, Set
+import shutil
 
 Tweet = namedtuple("Tweet", ["tweet", "username", "photos"])
 
@@ -326,7 +327,11 @@ def refrect_html(N=10000):
         except Exception as exc:
             print(f'[{FILE}][{keyword_name}] error occured in parallel refrect_html, exc = {exc}', file=sys.stderr)
 
+
 def _get_imgs(arg):
+    """
+    1. requestsで画像をgetするタイミングでハングアップすることがあるのでtimeoutを設ける
+    """
     link, photos = arg
     original_image_digests = []
     original_image_urls = []
@@ -343,11 +348,14 @@ def _get_imgs(arg):
         original_image_urls.append(photo)
         if Path(f'{TOP_DIR}/var/Twitter/jpgs/{digest}').exists():
             continue
-        with requests.get(photo) as r:
-            binary = r.content
-        with open(f'{TOP_DIR}/var/Twitter/jpgs/{digest}', 'wb') as fp:
-            fp.write(binary)
-
+        try:
+            with requests.get(photo, timeout=60) as r:
+                binary = r.content
+            with open(f'{TOP_DIR}/var/Twitter/jpgs/{digest}', 'wb') as fp:
+                fp.write(binary)
+        except Exception as exc:
+            tb_lineno = sys.exc_info()[2].tb_lineno
+            print(f"[{FILE}] exc = {exc}, tb_lineno = {tb_lineno}", file=sys.stderr)
     with open(f'{map_out_file}', 'w') as fp:
         fp.write(json.dumps({"link": link, "original_image_digests": original_image_digests, "original_image_urls": original_image_urls}, indent=2))
 
@@ -398,7 +406,19 @@ def post_process(N=10000):
                     if _tmp is not None:
                         tmp += _tmp
             head = f"<html><head><title>{day}</title></head><body>"
-            tail = "</body>"
+            head = f"""<html><head><title>{keyword_name} {day}</title>
+                <link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
+                <script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+                <script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+                <link href="//cdn.jsdelivr.net/npm/featherlight@1.7.14/release/featherlight.min.css" type="text/css" rel="stylesheet" />
+                <script src="//code.jquery.com/jquery-latest.js"></script>
+                <script src="//cdn.jsdelivr.net/npm/featherlight@1.7.14/release/featherlight.min.js" type="text/javascript" charset="utf-8"></script>
+                </head><body>"""
+            #            meta = """<section
+            #          data-featherlight-gallery
+            #          data-featherlight-filter="a">"""
+            #            head += meta
+            tail = "</section></body>"
             if not Path(f"{HERE}/var/{NAME}/{keyword_name}/htmls/{day}.html").exists():
                 with open(f'{HERE}/var/{NAME}/{keyword_name}/htmls/{day}.html', 'w') as fp:
                     fp.write(head + tmp + tail)
@@ -459,6 +479,8 @@ def _post_process_recent(arg):
                         a["target"] = "_blank"
                         if len(original_image_digests) > 0:
                             a['href'] = f'/twitter/jpgs/{original_image_digests[0]}'
+                            # a["href"] = "#"
+                            a["data-featherlight"] = 'image'
                 """
                 2. imgのURLをLocalURLに張替え
                 """
@@ -468,6 +490,8 @@ def _post_process_recent(arg):
                         src = imagegrid.find('img').get('src')
                         # imagegrid['href'] = src
                         imagegrid['href'] = f'/twitter/jpgs/{original_image_digest}'
+                        # imagegrid['href'] = '#'
+                        imagegrid["data-featherlight"] = 'image'
             except Exception as exc:
                 lineno = sys.exc_info()[2].tb_lineno
                 print(f'[{FILE}] post_process exception, exc = {exc}, url = {url}, line = {lineno}', file=sys.stderr)
@@ -479,8 +503,9 @@ def _post_process_recent(arg):
                 Path(f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}').unlink()
             """
             styleの読み込みは一回だけでOK
+            NOTE 10の倍数のとき読み込む
             """
-            if idx == df_size - 1 or idx == 0:
+            if idx == df_size - 1 or idx == 0 or idx % 10 == 0:
                 tmp += str(sandbox_root) + str(outer_style)
             else:
                 tmp += str(sandbox_root)
@@ -494,7 +519,9 @@ def post_process_recent():
     """
     1. 静的なhtmlを日付粒度で作る
     2. 最新の情報だけに限定した特別版
+    3. 重いので40ページごとsplit
     """
+    Path(f'{HERE}/var/{NAME}/recents/').mkdir(exist_ok=True, parents=True)
     for csv_file in glob.glob(f"{HERE}/var/{NAME}/link_photos_date_likes_*.csv"):
         keyword_name = re.search(r"link_photos_date_likes_(.{1,}).csv", csv_file).group(1)
         df = pd.read_csv(csv_file)
@@ -507,15 +534,47 @@ def post_process_recent():
         for idx, (day, url) in tqdm(enumerate(zip(df.date, df.link)), desc=f"[{FILE}] building html...", total=len(df)):
             args.append((idx, day, url, len(df)))
 
-        tmp = ""
+        tmps = []
         with ProcessPoolExecutor(max_workers=24) as exe:
             for _tmp in exe.map(_post_process_recent, args):
                 if _tmp is not None:
-                    tmp += _tmp
-        head = f"<html><head><title>最新 {keyword_name}</title></head><body>"
-        tail = "</body>"
-        with open(f'{HERE}/var/{NAME}/recent_{keyword_name}.html', 'w') as fp:
-            fp.write(head + tmp + tail)
+                    tmps.append(_tmp)
+        head = f"""<html><head><title>最新 {keyword_name}</title>
+            <link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
+            <script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+            <script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+            <link href="//cdn.jsdelivr.net/npm/featherlight@1.7.14/release/featherlight.min.css" type="text/css" rel="stylesheet" />
+            <script src="//code.jquery.com/jquery-latest.js"></script>
+            <script src="//cdn.jsdelivr.net/npm/featherlight@1.7.14/release/featherlight.min.js" type="text/javascript" charset="utf-8"></script>
+            </head><body>"""
+        meta = """<section
+      data-featherlight-gallery
+      data-featherlight-filter="a">"""
+        head += meta
+        tail = "</section></body>"
+        for i in range(100):
+            start = i * 40
+            end = i * 40 + 40
+            """ adhocにキーワードを取り出し、めっちゃ不安 """
+            keyword = keyword_name.split("_")[0]
+            links = f"""<p align="center"><a href="/recent_stats/{keyword}/{i+1}">次のページ</a></p>"""
+            saves = tmps[start:end]
+            with open(f'{HERE}/var/{NAME}/recents/recent_{keyword_name}_{i}.html', 'w') as fp:
+                fp.write(head + links + "".join(saves) + links + tail)
+
+
+def delete_chrome_tmp():
+    """
+    1. chromeのtemp folderを消す
+    2. inodeを食い尽くしてしまう
+    """
+    for tmp_dir in glob.glob(f'/tmp/ReflectHtml*'):
+        if Path(tmp_dir).is_dir():
+            try:
+                shutil.rmtree(tmp_dir)
+            except Exception as exc:
+                tb_lineno = sys.exc_info()[2].tb_lineno
+                print(f"[{FILE}] exc = exc, tb_lineno = {tb_lineno}", file=sys.stderr)
 
 
 def run():
@@ -534,6 +593,8 @@ def run():
     get_imgs()
     post_process_recent()
     post_process()
+    delete_chrome_tmp()
+    print("finish run...")
 
 
 if __name__ == "__main__":
@@ -545,4 +606,3 @@ if __name__ == "__main__":
     while True:
         schedule.run_pending()
         time.sleep(1)
-

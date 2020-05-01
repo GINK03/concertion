@@ -29,10 +29,10 @@ try:
     from Web import GetDay
     from Web import GenerateDailyYJAbstracts
     from Web import Login
-    from Web import recent_uraaka
-    from Web import recent_guradoru
-    from Web import recent_corona
-    from Web import recent_kawaii
+    from Web import recent_stats
+    # from Web import recent_guradoru
+    # from Web import recent_corona
+    # from Web import recent_kawaii
 except Exception as exc:
     raise Exception(f"[{FILE}] import error exc = {exc}")
 
@@ -78,43 +78,30 @@ def daily_yj_abstracts(name):
     return GenerateDailyYJAbstracts.generate_daily_yj_abstracts(name)
 
 
-@application.route('/recent_uraaka')
-def recent_uraaka_():
-    return recent_uraaka.recent_uraaka()
+@application.route('/recent_stats/<category>/<page_num>')
+def recent_stats_(category: str, page_num: str) -> str:
+    return recent_stats.recent_stats(category, page_num)
 
 
-@application.route('/recent_guradoru')
-def recent_guradoru_():
-    return recent_guradoru.recent_guradoru()
 
 
-@application.route('/recent_corona')
-def recent_corona_():
-    return recent_corona.recent_corona()
-
-
-@application.route('/recent_kawaii')
-def recent_kawaii_():
-    return recent_kawaii.recent_kawaii()
-
-
-@application.route("/backlog_of_uraaka", methods=['get'])
-def backlog_of_uraaka():
-    head = '<html><head><title>backlog of uraaka</title></head><body>'
+@application.route("/backlog_of_stats/<category>", methods=['get'])
+def backlog_of_stats_(category: str) -> str:
+    head = f'<html><head><title>backlog of {category}</title></head><body>'
     body = ''
-    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/裏垢女子_50000/htmls/*'))):
+    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/{category}_50000/htmls/*'))):
         name = Path(fn).name
         date = name.replace(".html", "")
-        tmp = f'''<a href="/backlog_of_uraaka/{name}">{date}</a><br>'''
+        tmp = f'''<a href="/backlog_of_stats/{category}/{name}">{date}</a><br>'''
         body += tmp
     tail = '</body></html>'
     html = head + body + tail
     return html
 
 
-@application.route("/backlog_of_uraaka/<name>", methods=['get'])
-def backlog_of_uraaka_name(name):
-    fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/裏垢女子_50000/htmls/{name}'
+@application.route("/backlog_of_stats/<category>/<name>", methods=['get'])
+def backlog_of_stats_category_name_(category, name):
+    fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/{category}_50000/htmls/{name}'
     with open(fn) as fp:
         html = fp.read()
     return html

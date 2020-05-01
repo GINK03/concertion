@@ -49,8 +49,18 @@ def yj_html_replace(html: str, digest: str) -> str:
         soup.find(attrs={'id': 'footer'}).decompose()
         soup.find(attrs={'class': 'stream_title'}).decompose()
         soup.find(attrs={'id': 'contentsHeader'}).decompose()
+        """ 画像の説明のhrefを消す """
+        if soup.find(attrs={"class":"photoOffer"}):
+            del soup.find(attrs={"class":"photoOffer"}).find("a")["href"]
+        """ パラグラフ中のリンクを削除 """
+        paragraph = soup.find(attrs={"class":"paragraph"})
+        for a in paragraph.find_all("a"):
+            if a.get("href"):
+                del a["href"]
+        #paragraph.find("a", {"class":None, "href":True}).decompose()
     except Exception as exc:
         print(f'[{FILE}] decompose error, {exc}', file=sys.stderr)
+
     print(f'[{FILE}] accessing to {TOP_DIR}/var/YJ/comments/{digest}', file=sys.stdout)
     comment_html = ''
     comment_html_below = ''

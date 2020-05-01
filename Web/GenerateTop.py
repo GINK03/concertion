@@ -47,10 +47,10 @@ def generate_top(twitter: Any) -> str:
         body += f"<h3>こんにちは、{screen_name}さん</h3>"
 
     body += "<h3>統計的手法によりアカウント発見</h3>"
-    body += '<p><a href="/recent_uraaka">最近人気の裏垢</a>    <a href="/backlog_of_uraaka">過去の裏垢のバックログ</a></p>'
-    body += '<p><a href="/recent_guradoru">最近人気のグラドル</a>    <a href="/backlog_of_guradoru">過去のグラドルのバックログ</a></p>'
-    body += '<p><a href="/recent_corona">最近人気の同人</a>    <a href="/backlog_of_corona">過去の同人のバックログ</a></p>'
-    body += '<p><a href="/recent_kawaii">最近人気の可愛い</a>    <a href="/backlog_of_kawaii">過去の可愛いのバックログ</a></p>'
+    body += '<p><a href="/recent_stats/裏垢女子/0">最近人気の裏垢</a>    <a href="/backlog_of_stats/裏垢女子">過去の裏垢のバックログ</a></p>'
+    body += '<p><a href="/recent_stats/グラドル/0">最近人気のグラドル</a>    <a href="/backlog_of_stats/グラドル">過去のグラドルのバックログ</a></p>'
+    body += '<p><a href="/recent_stats/同人/0">最近人気の同人</a>    <a href="/backlog_of_stats/同人">過去の同人のバックログ</a></p>'
+    body += '<p><a href="/recent_stats/可愛い/0">最近人気の可愛い</a>    <a href="/backlog_of_stats/可愛い">過去の可愛いのバックログ</a></p>'
     """ これはコンテンツの作り込みが薄くサスペンド """
 
     body += "</div><h3>過去ログ</h3>"
