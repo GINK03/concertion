@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 from hashlib import sha256
 import pandas as pd
+from bs4 import BeautifulSoup
 from collections import namedtuple
 import sys
 import glob
@@ -100,11 +101,23 @@ def backlog_of_stats_(category: str) -> str:
 
 
 @application.route("/backlog_of_stats/<category>/<name>", methods=['get'])
-def backlog_of_stats_category_name_(category, name):
+def backlog_of_stats_category_name_(category: str, name: str) -> str:
+    """
+    1. html中にはモーダル有効化の<a>タグ中のフラグ(e.g. data-featherlight="image")が存在するので、取り除く
+    Args:
+        - category: 統計的に処理した結果のどれがほしいか
+        - name: 日付等を含んだ具体的な読み込むべきファイル名
+    Retruns:
+        - str: html
+    """
     fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/{category}_50000/htmls/{name}'
     with open(fn) as fp:
         html = fp.read()
-    return html
+
+    soup = BeautifulSoup(html, "lxml")
+    for a in soup.find_all("a", attrs={"data-featherlight": True}):
+        del a["data-featherlight"]
+    return soup.__str__()
 
 
 @application.route("/backlog_of_guradoru", methods=['get'])

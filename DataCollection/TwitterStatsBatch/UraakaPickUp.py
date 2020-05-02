@@ -556,8 +556,10 @@ def post_process_recent():
             start = i * 40
             end = i * 40 + 40
             """ adhocにキーワードを取り出し、めっちゃ不安 """
+            """ スマホで見た時、次へ、が見えづらかったので linksに <br>を追加 """
+            """ モーダルが使いにくい(削除するかも) """
             keyword = keyword_name.split("_")[0]
-            links = f"""<p align="center"><a href="/recent_stats/{keyword}/{i+1}">次のページ</a></p>"""
+            links = f"""<br/><br/> <p align="center"><a href="/recent_stats/{keyword}/{i+1}">次のページ</a></p> <br/>"""
             saves = tmps[start:end]
             with open(f'{HERE}/var/{NAME}/recents/recent_{keyword_name}_{i}.html', 'w') as fp:
                 fp.write(head + links + "".join(saves) + links + tail)
