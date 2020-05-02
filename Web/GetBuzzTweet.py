@@ -38,7 +38,10 @@ def get_buzz_tweet() -> str:
             soup.insert(-1, left_soup)はsoupの最後に要素を追加するということ
             """
             append_soup = BeautifulSoup(div.find(attrs={"class":"CallToAction"}).__str__(), "lxml")
-            append_soup.find(attrs={"class":"CallToAction-text"}).string.replace_with("評論する")
+            try:
+                append_soup.find(attrs={"class":"CallToAction-text"}).string = "評論する"
+            except Exception as exc:
+                print(exc)
             day_name = Path(fn).parent.name
             tweet_digest = Path(fn).name
             for a in append_soup.find_all("a", {"href": True}):

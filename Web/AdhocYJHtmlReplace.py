@@ -1,15 +1,20 @@
+import gzip
+from typing import List
 from bs4 import BeautifulSoup
 import sys
 from pathlib import Path
 import glob
 import pickle
 import json
+import re
+import requests
 
 FILE = Path(__file__).name
 TOP_DIR = Path(__file__).resolve().parent.parent
 try:
     sys.path.append(f'{TOP_DIR}')
     from Web.Structures import YJComment
+    from Web import GetDigest
 except Exception as exc:
     raise Exception(exc)
 
@@ -23,6 +28,31 @@ def get_form_html(digest):
     """
     return html
 
+
+def get_nexts(href: str, next_paragraphs: List[BeautifulSoup]) -> None:
+    try:
+        digest = GetDigest.get_digest(href)
+        Path(f"{TOP_DIR}/var/YJ/NextPages/").mkdir(exist_ok=True, parents=True)
+        if Path(f'{TOP_DIR}/var/YJ/NextPages/{digest}').exists():
+            # load
+            with open(f'{TOP_DIR}/var/YJ/NextPages/{digest}', 'rb') as fp:
+                html = gzip.decompress(fp.read()).decode("utf8")
+        else:
+            with requests.get(href) as r:
+                html = r.text
+            # save
+            with open(f'{TOP_DIR}/var/YJ/NextPages/{digest}', 'wb') as fp:
+                fp.write(gzip.compress(bytes(html, "utf8")))
+        next_soup = BeautifulSoup(html, "lxml")
+        next_paragraph = next_soup.find(attrs={"class": "paragraph"})
+        next_paragraphs.append(next_paragraph)
+
+        next_page_li = next_soup.find("li", attrs={"class": "next"})
+        if next_page_li is not None and next_page_li.find("a") is not None:
+            get_nexts(href=next_page_li.find("a").get("href"), next_paragraphs=next_paragraphs)
+    except Exception as exc:
+        tb_lineno = sys.exc_info()[2].tb_lineno
+        print(f"[{FILE}] exc = {exc}, tb_lineno = {tb_lineno}", file=sys.stderr)
 
 def yj_html_replace(html: str, digest: str) -> str:
     """
@@ -50,16 +80,48 @@ def yj_html_replace(html: str, digest: str) -> str:
         soup.find(attrs={'class': 'stream_title'}).decompose()
         soup.find(attrs={'id': 'contentsHeader'}).decompose()
         """ 画像の説明のhrefを消す """
-        if soup.find(attrs={"class":"photoOffer"}):
-            del soup.find(attrs={"class":"photoOffer"}).find("a")["href"]
+        if soup.find(attrs={"class": "photoOffer"}):
+            del soup.find(attrs={"class": "photoOffer"}).find("a")["href"]
         """ パラグラフ中のリンクを削除 """
-        paragraph = soup.find(attrs={"class":"paragraph"})
+        paragraph = soup.find(attrs={"class": "paragraph"})
         for a in paragraph.find_all("a"):
             if a.get("href"):
                 del a["href"]
-        #paragraph.find("a", {"class":None, "href":True}).decompose()
+        """ テキストリンクの装飾を消す """
+        for a in soup.find_all(attrs={"class": "yjDirectSLinkHl"}):
+            del a["class"]
+        """ fontをWeb Fontの明朝に変更"""
+        soup.find("head").insert(-1, BeautifulSoup('<link href="https://fonts.googleapis.com/css?family=Noto+Serif+JP:400,700&display=swap&subset=japanese" rel="stylesheet">', 'lxml'))
+        soup.find("body")["style"] = "font-family: 'Noto Serif JP' !important;"
+
+        """ javascriptによるクリック発火を抑制 """
+        for a in soup.find_all("a", {"onmousedown": True}):
+            del a["onmousedown"]
+
+        """ stylesheetの一部を削除 """
+        soup.find(attrs={"href": "https://s.yimg.jp/images/jpnews/cre/article/pc/css/article_pc_v7.0.css"}).decompose()
+
+        """ 次のページをパースして統合 """
+        next_page_li = soup.find("li", attrs={"class": "next"})
+        if next_page_li is not None:
+            next_paragraphs: List[BeautifulSoup] = []
+            get_nexts(next_page_li.find("a").get("href"), next_paragraphs)
+
+            for idx, next_paragraph in enumerate(next_paragraphs):
+                soup.find(attrs={"class": "articleMain"}).insert(-1, next_paragraph)
+                soup.find(attrs={"class": "articleMain"}).insert(-1, BeautifulSoup(f"""<p align="center"> Page {idx+2} </p>""", "lxml"))
+
+            """ pageを示すフッターを消す """
+            soup.find(attrs={"class": "marT10"}).decompose()
+            soup.find(attrs={"class": "fdFt"}).decompose()
+
+        """ もとURLを挿入 """
+        original_url = soup.find("meta", attrs={"property": "og:url"}).get("content")
+        soup.find(attrs={"class": "articleMain"}).insert(-1, BeautifulSoup(f"""<a href="{original_url}"><p align="center">オリジナルURL</p></a>""", "lxml"))
+        # paragraph.find("a", {"class":None, "href":True}).decompose()
     except Exception as exc:
-        print(f'[{FILE}] decompose error, {exc}', file=sys.stderr)
+        tb_lineno = sys.exc_info()[2].tb_lineno
+        print(f'[{FILE}] decompose error, exc = {exc}, tb_lineno = {tb_lineno}', file=sys.stderr)
 
     print(f'[{FILE}] accessing to {TOP_DIR}/var/YJ/comments/{digest}', file=sys.stdout)
     comment_html = ''

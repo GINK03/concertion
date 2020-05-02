@@ -476,7 +476,7 @@ def _post_process_recent(arg):
                 append_soup = BeautifulSoup(sandbox_root.find(attrs={"class":"CallToAction"}).__str__(), "lxml")
                 try:
                     if append_soup.find(attrs={"class":"CallToAction-text"}).string is not None:
-                        append_soup.find(attrs={"class":"CallToAction-text"}).string.replace_with("評論する")
+                        append_soup.find(attrs={"class":"CallToAction-text"}).string = "評論する"
                         for a in append_soup.find_all("a", {"href": True}):
                             a["href"] = f"/TweetHyoron/{day}/{digest}"
                         sandbox_root.find(attrs={"class":"EmbeddedTweet-tweetContainer"}).insert(-1, append_soup)
