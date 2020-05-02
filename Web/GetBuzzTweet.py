@@ -34,6 +34,18 @@ def get_buzz_tweet() -> str:
                 if mediaasset.find('img') and mediaasset.find('img').get('alt') != 'Embedded video':
                     mediaasset['href'] = mediaasset.find('img').get('src')
             """
+            NOTE: このツイートについて評論するを追加
+            soup.insert(-1, left_soup)はsoupの最後に要素を追加するということ
+            """
+            append_soup = BeautifulSoup(div.find(attrs={"class":"CallToAction"}).__str__(), "lxml")
+            append_soup.find(attrs={"class":"CallToAction-text"}).string.replace_with("評論する")
+            day_name = Path(fn).parent.name
+            tweet_digest = Path(fn).name
+            for a in append_soup.find_all("a", {"href": True}):
+                a["href"] = f"/TweetHyoron/{day_name}/{tweet_digest}"
+            div.find(attrs={"class":"EmbeddedTweet-tweetContainer"}).insert(-1, append_soup)
+
+            """
             NOTE: divがNoneならばスキップする
             """
             if div is None:

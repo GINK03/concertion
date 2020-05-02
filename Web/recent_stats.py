@@ -1,6 +1,7 @@
 
 from pathlib import Path
 import glob
+from bs4 import BeautifulSoup
 
 TOP_DIR = Path(__file__).resolve().parent.parent
 
