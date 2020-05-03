@@ -29,7 +29,7 @@ def generate_daily_yj_abstracts(day) -> str:
         inner += f'''<h2>{name}</h2>'''
         df = pd.read_csv(fn)[:20]
         for url, title, category, score in zip(df.url, df.title, df.category, df.score):
-            tmp = f'''<a href="https://{Hostname.hostname()}/blobs_yj/{GetDigest.get_digest(url)}">[{category}] {title}</a>score:{score:0.03f}<br>'''
+            tmp = f'''<a href="https://{Hostname.hostname()}/blobs_yj/{GetDigest.get_digest(url)}" original="{url}">[{category}] {title}</a>score:{score:0.03f}<br>'''
             inner += tmp
 
     tail= '</body></html>'

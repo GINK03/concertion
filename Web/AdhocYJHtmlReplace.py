@@ -182,5 +182,5 @@ def yj_html_replace(html: str, digest: str) -> str:
     except Exception as exc:
         tb_lineno = sys.exc_info()[2].tb_lineno
         print(f'[{FILE}] exc = {exc}, tb_lineno = {tb_lineno}', file=sys.stderr)
-        return "Cannnot handle this page"
+        return f"[{FILE}] Cannnot handle this page, exc = {exc}, tb_lineno = {tb_lineno}"
     return str(soup)

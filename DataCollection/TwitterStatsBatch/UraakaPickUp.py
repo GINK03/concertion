@@ -532,7 +532,8 @@ def _post_process_recent(arg):
                 tmp += str(sandbox_root)
         return tmp
     except Exception as exc:
-        print(exc)
+        tb_lineno = sys.exc_info()[2].tb_lineno
+        print(f"[{FILE}] exc = {exc}, tb_lineno = {tb_lineno}", file=sys.stderr)
         return None
 
 

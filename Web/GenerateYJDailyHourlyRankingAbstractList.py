@@ -50,10 +50,10 @@ def generate_yj_daily_houry_ranking_abstract_list() -> str:
         parsed_name = name.replace(".csv", "")
         renamed_title = datetime.datetime.strptime(parsed_name, "%Y-%m-%d %H").strftime("%Y年%m月%d日 %H時")
         tmp += f'''<h3>Yahoo News ログ {renamed_title}</h3>'''
-        # max20件に限定する
-        df = df[:20]
+        # max13件に限定する
+        df = df[:13]
         for url, title, category, score in zip(df.url, df.title, df.category, df.score):
-            tmp += f'''<a href="https://{Hostname.hostname()}/blobs_yj/{GetDigest.get_digest(url)}">[{category}] {title}</a>score:{score:0.03f}<br>'''
+            tmp += f'''<a href="https://{Hostname.hostname()}/blobs_yj/{GetDigest.get_digest(url)}" original="{url}">[{category}] {title}</a>score:{score:0.03f}<br>'''
         inner += tmp
     return inner
 

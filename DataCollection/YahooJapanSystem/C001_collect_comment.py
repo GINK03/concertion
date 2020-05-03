@@ -52,7 +52,7 @@ def batch_get_iframe_html(arg):
                 return None
             html = r.text
     except Exception as exc:
-        print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] {exc}, arg = {arg}', file=sys.stderr)
+        print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] exc = {exc}, arg = {arg}', file=sys.stderr)
         return None
     soup = BeautifulSoup(html, 'html5lib')
 
@@ -101,8 +101,8 @@ def process(arg):
     options.add_argument(f"user-data-dir=/tmp/{FILE}_{key:06d}")
     options.binary_location = shutil.which('google-chrome')
     driver = webdriver.Chrome(executable_path=shutil.which("chromedriver"), options=options)
-    if key != None:
-        iterator = tqdm(files, position=key, desc=f'CPU={key}')
+    if key != None and key in {"1", 1}:
+        iterator = tqdm(files, position=key, desc=f'[{FILE}] CPU={key}')
     else:
         iterator = files
     try:
@@ -110,6 +110,8 @@ def process(arg):
             try:
                 title_url_digest_score = pickle.load(open(file, 'rb'))
             except Exception as exc:
+                tb_lineno = sys.exc_info()[2].tb_lineno
+                print(f"[{FILE}] exc = {exc}, tb_lineno = {tb_lineno}", file=sys.stderr)
                 Path(file).unlink()
                 continue
             if title_url_digest_score.date <= datetime.datetime.now() - datetime.timedelta(days=1):
@@ -118,11 +120,13 @@ def process(arg):
 
             out_dir = f'{TOP_FOLDER}/var/YJ/comments/{title_url_digest_score.digest}'
             Path(out_dir).mkdir(exist_ok=True, parents=True)
+            """
+            20回以上取得したら処理せずスキップ
+            """
             if len(glob.glob(f'{out_dir}/*.pkl')) >= 20:
                 continue
             o = urlparse(url)
             d = QueryToDict.query_to_dict(o.query)
-            'https://headlines.yahoo.co.jp/cm/main?d=20200214-02140949-nksports-soci&s=lost_points&o=desc&p=1'
 
             iframe_urls = []
             for p in range(1, 10):
@@ -156,6 +160,10 @@ def process(arg):
 
 
 def process_runner():
+    """
+    1. FreqencyWatchのデータから引数を作成し
+    2. 引数をもとに対象のページのコメントを取得する
+    """
     NUM = 64
     args = []
     cur = 0
@@ -169,7 +177,7 @@ def process_runner():
         files1 = sorted(files1, key=lambda x:x[0])[-32:]
         files1 = [file1 for ts, file1 in files1]
         random.shuffle(files1)
-        print(f'total input file size {len(files1)}')
+        print(f'[{FILE}] total input file size {len(files1)}')
         for fn1 in files1:
             args.append({'CPU': cur % NUM, 'file': fn1})
             cur += 1
@@ -181,23 +189,23 @@ def process_runner():
         print(args.to_dict('record'))
         for arg in args.to_dict('record'):
             process(arg)
-        exit()
+        exit(256)
 
-    print('run as multithreading...')
+    print(f'[{FILE}] run as multithreading...', file=sys.stdout)
     try:
         #  with ProcessPoolExecutor(max_workers=NUM) as exe:
         # exe.map(process, args.to_dict('record'), timeout=300)
         ps = []
         args = [arg for arg in args.to_dict('record')]
-        print(f'total input data size {len(args)}')
+        print(f'[{FILE}] total input data size {len(args)}', file=sys.stdout)
         with ProcessPoolExecutor(max_workers=NUM) as exe:
             for ret in exe.map(process, args, timeout=300):
                 ret
     except concurrent.futures._base.TimeoutError as exc:
-        print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] {exc}', file=sys.stderr)
+        print(f'[{FILE}] tb_lineno = {getframeinfo(currentframe()).lineno}, exc = {exc}', file=sys.stderr)
         return
     except Exception as exc:
-        print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] {exc}', file=sys.stderr)
+        print(f'[{FILE}] tb_lineno = {getframeinfo(currentframe()).lineno}, exc = {exc}', file=sys.stderr)
         return
 
 

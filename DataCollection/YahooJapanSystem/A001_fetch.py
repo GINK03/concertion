@@ -36,11 +36,19 @@ except Exception as exc:
 
 
 def process(arg):
+    """
+    データをスクレイピングしてランキング等のメタ情報を取得して保存する 
+    Args:
+        - arg: スコアの計算
+    Reeturns:
+        - nothing
+    """
     try:
         # print(a)
         title = arg.title
         url = arg.url
         category = arg.category
+        """ ここで本文HTMLを保存する """
         blobs_digest = Gyotaku.gyotaku(url, arg.rank)
         score = 1 / (arg.rank + 1)
 
@@ -59,13 +67,21 @@ def process(arg):
         Path(out_sub_folder).mkdir(exist_ok=True, parents=True)
         with open(f"{out_sub_folder}/{now_str}_{url_digest}.pkl", "wb") as fp:
             pickle.dump(title_url_digest_score, fp)
+        
         if E.get("DEBUG"):
-            print("finish", title, url)
+            # print("finish", title, url)
+            print(title_url_digest_score)
     except Exception as exc:
-        print(f"[{FILE}][{getframeinfo(currentframe()).lineno}] {exc}, {arg}", file=sys.stderr)
+        print(f"[{FILE}] tb_lineno = {getframeinfo(currentframe()).lineno} exc = {exc}, arg = {arg}", file=sys.stderr)
 
 
-def get_with_requests(ranking_url: str):
+def get_with_requests(ranking_url: str) -> str:
+    """
+    Args:
+        - ranking_url: 取得するべきURL
+    Returns:
+        - html: HTML
+    """
     with requests.get(ranking_url) as r:
         html = r.text
     return html
@@ -105,22 +121,26 @@ def fetch_each_categories():
     try:
         with ProcessPoolExecutor(max_workers=32) as exe:
             for ret in tqdm(
-                exe.map(process, args, timeout=360), total=len(args)
+                exe.map(process, args, timeout=360), total=len(args), desc=f"[{FILE}] processing..."
             ):
                 ret
     except concurrent.futures._base.TimeoutError as exc:
         print(
-            f"[{FILE}][{getframeinfo(currentframe()).lineno}] timeout handled, {exc}",
+            f"[{FILE}] tb_lineno = {getframeinfo(currentframe()).lineno}, timeout handled, exc = {exc}",
             file=sys.stderr,
         )
     except Exception as exc:
         print(
-            f"[{FILE}][{getframeinfo(currentframe()).lineno}] {exc}",
+            f"[{FILE}] tb_lineno = {getframeinfo(currentframe()).lineno}, exc = {exc}",
             file=sys.stderr,
         )
 
 
 def run():
+    """
+    1. それぞれのカテゴリのランキングの統計値を求める
+    2. htmlをパースして保存する役割もある
+    """
     fetch_each_categories()
 
 

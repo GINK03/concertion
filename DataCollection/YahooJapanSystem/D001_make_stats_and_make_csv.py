@@ -4,7 +4,7 @@ from pathlib import Path
 import pickle
 import sys
 from concurrent.futures import ThreadPoolExecutor
-
+from typing import Union
 from tqdm import tqdm
 FILE = Path(__file__).name
 TOP_FOLDER = Path(__file__).resolve().parent.parent.parent
@@ -16,11 +16,17 @@ except Exception as exc:
 
 INPUT_FOLDER = f'{TOP_FOLDER}/var/YJ/frequency_watch/'
 
-def process(fn1):
+def process(fn1: str) -> Union[TitleUrlDigestScore, None]:
+    """
+    Args:
+        - fn1: 読み込みファイル名
+    Returns:
+        - Union[TitleUrlDigestScore, None]: 失敗時はNoneが帰る
+    """
     try:
         title_url_digest_score = pickle.load(open(fn1, 'rb'))
     except Exception as exc:
-        print(f'[{FILE}] {exc}.', file=sys.stderr)
+        print(f'[{FILE}] exc = {exc}.', file=sys.stderr)
         Path(fn1).unlink()
         return None
     return title_url_digest_score
@@ -34,24 +40,23 @@ def run():
     objs = []
     try:
         with ThreadPoolExecutor(max_workers=32) as exe:
-            for r in tqdm(exe.map(process, args, timeout=60*5), total=len(args)):
+            for r in exe.map(process, args, timeout=60*5):
                 if r is None:
                     continue
                 objs.append(r)
     except Exception as exc:
-        print(exc, file=sys.stderr)
+        print(f"[{FILE}] exc = {exc}", file=sys.stderr)
+    
     # clean up pkls
     for fn0 in glob.glob(f'{INPUT_FOLDER}/*'):
         for fn1 in glob.glob(f'{fn0}/*.pkl'):
             Path(fn1).unlink()
 
     df = pd.DataFrame(objs)
-
     objs = []
     for (url, category), sub in df.groupby(by=['url', 'category']):
         obj = {'url': url, 'title':sub.iloc[0].title, 'category': category, 'score': sub.score.sum(), 'first_date': sub.date.min()}
         objs.append(obj)
-
     df = pd.DataFrame(objs)
 
     df['yyyy-mm-dd hh'] = df.first_date.apply(lambda x:x.strftime('%Y-%m-%d %H'))
