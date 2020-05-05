@@ -11,3 +11,4 @@ var
 var_matching.jp
 ghostdriver.log
 .python-version
+mecab-ipadic-neologd/

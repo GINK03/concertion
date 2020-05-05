@@ -127,6 +127,12 @@ def gyotaku(url: str, instance_number: int) -> str:
     Returns:
         - digest: 取得対象URLのdigest
     """
+    o_mst = urlparse(url)
+    digest = GetDigest.get_digest(o_mst.geturl())
+    """ もしすでに取得していたらReturnする """
+    if Path(f'{TOP_DIR}/var/Gyo/blobs/{digest}').exists():
+        return digest
+    
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--disable-gpu")
@@ -136,11 +142,6 @@ def gyotaku(url: str, instance_number: int) -> str:
     options.binary_location = shutil.which('google-chrome')
     driver = webdriver.Chrome(executable_path=shutil.which("chromedriver"), options=options)
     
-    o_mst = urlparse(url)
-    digest = GetDigest.get_digest(o_mst.geturl())
-    """ もしすでに取得していたらReturnする """
-    if Path(f'{TOP_DIR}/var/Gyo/blobs/{digest}').exists():
-        return digest
 
     driver.get(o_mst.geturl())
     time.sleep(1.5)

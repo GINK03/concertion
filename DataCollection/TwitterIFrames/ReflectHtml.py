@@ -142,7 +142,13 @@ def reflect_html(key: int, day: str, digest: str) -> Union[None, bool]:
     return f'/twitter/tweet/{day}/{digest}'
 
 
-def proc(arg):
+def proc(arg: Tuple[int, str]) -> None:
+    """
+    Args:
+        - arg: keyとなるユニークなworking dirと指示の値と、ファイル名のペア
+    Returns:
+        - nothing
+    """
     try:
         key, fn = arg
         path = Path(fn)
@@ -159,7 +165,7 @@ def proc(arg):
 
 def glob_fs_and_work(NUM=300):
     """
-    1. 最新のタイムディレクトリのうちランダムでツイートを取得する
+    1. 最新のタイムディレクトリのツイートを取得する
     """
     day_dir = sorted(glob.glob(f'{TOP_DIR}/var/Twitter/input/*'))[-1]
     # print(day_dir)

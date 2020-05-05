@@ -22,7 +22,7 @@ FILE = Path(__file__).name
 
 tweet_hyoron = Blueprint('tweet_hyoron', __name__, template_folder='templates')
 @tweet_hyoron.route("/TweetHyoron/<day_name>/<digest>", methods=['get', "POST"])
-def tweet_hyoron_(day_name:str, digest: str) -> str:
+def tweet_hyoron_(day_name: str, digest: str) -> str:
     """
     Args:
         - day_name: digestは<day_name>のフォルダごとに分類されている(冗長かもしれない)
@@ -41,9 +41,9 @@ def tweet_hyoron_(day_name:str, digest: str) -> str:
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             with open(f"{out_dir}/{now}", "w") as fp:
                 if twitter.authorized:
-                    json.dump({"TweetComment": TweetComment, "datetime":now, "screen_name": twitter.token["screen_name"]}, fp, ensure_ascii=False)
+                    json.dump({"TweetComment": TweetComment, "datetime": now, "screen_name": twitter.token["screen_name"]}, fp, ensure_ascii=False)
                 else:
-                    json.dump({"TweetComment": TweetComment, "datetime":now, "screen_name": "名無しちゃん"}, fp, ensure_ascii=False)
+                    json.dump({"TweetComment": TweetComment, "datetime": now, "screen_name": "名無しちゃん"}, fp, ensure_ascii=False)
     head = '<html><head><title>Twitter評論</title></head><body>'
     body = ''
     with open(f'{TOP_DIR}/var/Twitter/tweet/{day_name}/{digest}') as fp:
@@ -61,11 +61,23 @@ def tweet_hyoron_(day_name:str, digest: str) -> str:
         if mediaasset.find('img') and mediaasset.find('img').get('alt') != 'Embedded video':
             mediaasset['href'] = mediaasset.find('img').get('src')
 
+    tweetCommentSubmitContainer = BeautifulSoup(soup.find(attrs={"class": "SandboxRoot"}).__str__(), "lxml")
+    tweetCommentSubmitContainer.find(attrs={"class": "Tweet-body"}).clear()
+    tweetCommentSubmitContainer.find(attrs={"class": "CallToAction"}).clear()
     comment_html = f"""
-    <form action="/TweetHyoron/{day_name}/{digest}" class="form" method="post" style="position: relative;"><textarea value="コメント" name="TweetComment" cols="55" rows="5" id="TweetComment" style="width: 65%; margin: 0 auto; margin-left:15%; margin-top: 10px;" ></textarea><br/>
-    <input type="submit" name="TweetSubmit" value="Submit" style="-webkit-appearance: none;-webkit-border-radius: 4px;-moz-border-radius: 4px;-ms-border-radius: 4px;-o-border-radius: 4px;border-radius: 4px;-webkit-background-clip: padding;-moz-background-clip: padding;margin: 0;padding: 3px 10px;text-shadow: white 0 1px 1px;text-decoration: none;vertical-align: top;width: auto; margin-left:15%;">
+    <form action="/TweetHyoron/{day_name}/{digest}" class="form" method="post" style="position: relative;"><textarea value="コメント" name="TweetComment" rows="5" id="TweetComment" style="width: 90%; margin: 0 auto; margin-left:5%; margin-top: 5px;" ></textarea><br/>
+    <input type="submit" name="TweetSubmit" value="Submit" style="-webkit-appearance: none;-webkit-border-radius: 4px;-moz-border-radius: 4px;-ms-border-radius: 4px;-o-border-radius: 4px;border-radius: 4px;-webkit-background-clip: padding;-moz-background-clip: padding;margin: 0;padding: 3px 10px;text-shadow: white 0 1px 1px;text-decoration: none;vertical-align: top;width: auto; margin-right: 10%; margin-left:80%;">
     </from>
     """
+    tweetCommentSubmitContainer.find(attrs={"class": "EmbeddedTweet-tweetContainer"}).insert(-1, BeautifulSoup(comment_html, "lxml"))
+    tweetCommentSubmitContainer.find(attrs={"class": "TweetAuthor-name"}).string = f"コメントする"
+    tweetCommentSubmitContainer.find(attrs={"class": "TweetAuthor-screenName"}).string = f"@concertion"
+    for a in tweetCommentSubmitContainer.find_all("a", {"class": "Tweet-header", "href": True}):
+        del a["href"]
+        a.name = "p"
+    tweetCommentSubmitContainer.find(attrs={"class": "Avatar"})["src"] = "https://pm1.narvii.com/6923/51394fd5f6e385f59bb51efa0f409e253e718a69r1-2048-1536v2_00.jpg"
+
+
     buzz_css = soup.find('body').find('style').__str__() if soup.find('body').find('style') else ""
     """
     Tweetのコメントをパース
@@ -86,8 +98,7 @@ def tweet_hyoron_(day_name:str, digest: str) -> str:
             print(f"[{FILE}] exc = {exc}", file=sys.stderr)
             Path(fn).unlink()
     other_comments_html = "".join(comments)
-    body += div.__str__() + buzz_css + comment_html + other_comments_html
+    body += div.__str__() + buzz_css + tweetCommentSubmitContainer.__str__() + buzz_css + other_comments_html
     tail = '</body></html>'
     html = head + body + tail
     return html
-

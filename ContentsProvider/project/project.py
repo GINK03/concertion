@@ -32,6 +32,7 @@ try:
     from Web import Login
     from Web import recent_stats
     from Web import TweetHyoron
+    from Web import ResponsibleDevices
     application.register_blueprint(TweetHyoron.tweet_hyoron)
     # from Web import recent_guradoru
     # from Web import recent_corona
@@ -98,7 +99,7 @@ def backlog_of_stats_(category: str) -> str:
         tmp = f'''<a href="/backlog_of_stats/{category}/{name}">{date}</a><br>'''
         body += tmp
     tail = '</body></html>'
-    html = head + body + tail
+    html = head + body + ResponsibleDevices.responsible_devices() + tail
     return html
 
 
@@ -106,6 +107,7 @@ def backlog_of_stats_(category: str) -> str:
 def backlog_of_stats_category_name_(category: str, name: str) -> str:
     """
     1. html中にはモーダル有効化の<a>タグ中のフラグ(e.g. data-featherlight="image")が存在するので、取り除く
+    2. htmlのbodyの中にスマホ用に画面にフィットさせるJSを注入する
     Args:
         - category: 統計的に処理した結果のどれがほしいか
         - name: 日付等を含んだ具体的な読み込むべきファイル名
@@ -119,6 +121,8 @@ def backlog_of_stats_category_name_(category: str, name: str) -> str:
     soup = BeautifulSoup(html, "lxml")
     for a in soup.find_all("a", attrs={"data-featherlight": True}):
         del a["data-featherlight"]
+    # print(BeautifulSoup(ResponsibleDevices.responsible_devices()))
+    soup.find("body").insert(0, BeautifulSoup(ResponsibleDevices.responsible_devices(), "lxml"))
     return soup.__str__()
 
 

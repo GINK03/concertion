@@ -39,20 +39,24 @@ class TimeFreq:
 
 
 def _pre_process(json_fn):
-    if Path(json_fn).is_dir():
+    try:
+        if Path(json_fn).is_dir():
+            return None
+        link_tfs = []
+        for line in open(json_fn):
+            try:
+                # print(line.strip())
+                line = line.strip()
+                obj = json.loads(line)
+                link, date, time = [obj[x] for x in ['link', 'date', 'time']]
+                tf = TimeFreq(datetime.datetime.strptime(f'{date} {time}', "%Y-%m-%d %M:%H:%S"), 1)
+                link_tfs.append((link, tf))
+            except:
+                continue
+        return link_tfs
+    except Exception as exc:
+        print(exc)
         return None
-    link_tfs = []
-    for line in open(json_fn):
-        try:
-            # print(line.strip())
-            line = line.strip()
-            obj = json.loads(line)
-            link, date, time = [obj[x] for x in ['link', 'date', 'time']]
-            tf = TimeFreq(datetime.datetime.strptime(f'{date} {time}', "%Y-%m-%d %M:%H:%S"), 1)
-            link_tfs.append((link, tf))
-        except:
-            continue
-    return link_tfs
 
 
 def pre_process(N=20000, DAYS=3):
@@ -61,7 +65,16 @@ def pre_process(N=20000, DAYS=3):
     2. HOME/.mnt/favにあるデータから処理する
     3. mutable性（過去にあまり遡れない性質になる、は許容する）
     4. timeはマシンのunixtime時間の違いによりUTC, JSTが混在するので、JSTを優先するため、最小値を採用
-    5. dateは3日前まで見る
+    5. dateはデフォルトでは3日前まで見る
+    Args:
+        - N: 直近にサンプルするサンプルユーザー数
+        - DAYS: 処理すべき日数
+    Returns:
+        - nothing
+    Inputs:
+        - {HOME}/.mnt/fav*: 最も名前的に後ろなディレクトリをインプットとして採用
+    Output:
+        - {HERE}/var/{NAME}_pre_process.csv: 人気のツイートを要約したデータを出力
     """
     link_tf = {}
     target_pool = sorted(glob.glob(f'{HOME}/.mnt/fav*'))[-1]
@@ -117,6 +130,16 @@ def refrect_html():
     1. ../TwitterIFrames/ReflectHtml.pyを呼び出す
     2. keyはダミーを採用
     3. digestは共通ライブラリから使用
+    Args:
+        - nothing
+    Returns:
+        - nothing
+    Exceptions:
+        - Exception: タイムアウト時に起こす
+    Inputs:
+        - {HERE}/var/{NAME}_pre_process.csv: 統計的に処理した結果を入力して, scritpをどうさせた後のHTMLを取得する
+    Outputs:
+        - TODO: 出力した結果をvarディレクトリ以下に保存している
     """
     NUM = psutil.cpu_count() * 2
     df = pd.read_csv(f'{HERE}/var/{NAME}_pre_process.csv')
@@ -127,17 +150,19 @@ def refrect_html():
         key = idx % NUM
         digest = GetDigest.get_digest(url)
         if not isinstance(day, str):
-            raise Exception("day object must be str.", type(day))
+            raise Exception(f"[{FILE}] day object must be str, type = {type(day)}")
         if len(day) > len("YYYY-mm-dd"):
-            raise Exception("day value must be %Y-%m-%d.")
+            raise Exception(f"[{FILE}] day value must be %Y-%m-%d")
         if key not in key_list:
             key_list[key] = []
         key_list[key].append((day, digest, url))
     args = [(key, objs) for key, objs in key_list.items()]
-    with ProcessPoolExecutor(max_workers=NUM) as exe:
-        for ret in tqdm(exe.map(_refrect_html, args, timeout=60*30), total=len(args), desc=f"[{FILE}] refrect_html..."):
-            ret
-
+    try:
+        with ProcessPoolExecutor(max_workers=NUM) as exe:
+            for ret in tqdm(exe.map(_refrect_html, args, timeout=60*60), total=len(args), desc=f"[{FILE}] refrect_html..."):
+                ret
+    except Exception as exc:
+        raise Exception(f"[{FILE}] refrect_html, タイム・アウトしました, exc = {exc}")
 
 def post_process():
     df = pd.read_csv(f'{HERE}/var/{NAME}_pre_process.csv')
@@ -158,6 +183,9 @@ def post_process():
                         continue
                     soup = BeautifulSoup(html, 'lxml')
                     sandbox_root = soup.find(attrs={'class': 'SandboxRoot'})
+                    if sandbox_root.find(attrs={'class': 'EmbeddedTweet'}) is None:
+                        Path(f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}').unlink()
+                        raise Exception(f"想定するdiv[EmbeddedTweet]が存在しません, url = {url}, freq = {freq}")
                     sandbox_root.find(attrs={'class': 'EmbeddedTweet'})["style"] = "margin: 0 auto; margin-top: 30px;"
                     """
                     styleの最後のヘッダー外の要素を取り出して最後に追加する
@@ -174,19 +202,46 @@ def post_process():
                     for image in images:
                         src = image.find('img').get('src')
                         image['href'] = src
+                    """
+                    EmbeddedTweetのタグにメタ情報である、"date"と"digest"を追加する
+                    """ 
+                    sandbox_root.find(attrs={'class': 'EmbeddedTweet'})["date"] = day
+                    sandbox_root.find(attrs={'class': 'EmbeddedTweet'})["day"] = day
+                    sandbox_root.find(attrs={'class': 'EmbeddedTweet'})["digest"] = digest
+                    """
+                    linkに評論のリンクを追加する
+                    """
+                    append_soup = BeautifulSoup(sandbox_root.find(attrs={"class":"CallToAction"}).__str__(), "lxml")
+                    try:
+                        if append_soup.find(attrs={"class":"CallToAction-text"}).string is not None:
+                            append_soup.find(attrs={"class":"CallToAction-text"}).string = "評論する"
+                            for a in append_soup.find_all("a", {"href": True}):
+                                a["href"] = f"/TweetHyoron/{day}/{digest}"
+                                sandbox_root.find(attrs={"class":"EmbeddedTweet-tweetContainer"}).insert(-1, append_soup)
+                    except Exception as exc:
+                        tb_lineno = sys.exc_info()[2].tb_lineno
+                        print(f"[{FILE}] exc = {exc}, tb_lineno = {tb_lineno}", file=sys.stderr)
                 except Exception as exc:
-                    print(f'[{FILE}] post_process exception, exc = {exc}', file=sys.stderr)
+                    tb_lineno = sys.exc_info()[2].tb_lineno
+                    print(f'[{FILE}] post_process exception, exc = {exc}, tb_lineno = {tb_lineno}', file=sys.stderr)
+                    continue
                 """
                 styleの読み込みは一回だけでOK
+                ただし idxが10の倍数の時追加する
                 """
-                if idx == MAX_NUM or idx == 0:
+                if idx == MAX_NUM or idx%10 == 0:
                     tmp += str(sandbox_root) + str(outer_style)
                 else:
                     tmp += str(sandbox_root)
         head = f"<html><head><title>{day}</title></head><body>"
         tail = "</body>"
-        with open(f'{HERE}/var/htmls/{day}.html', 'w') as fp:
-            fp.write(head + tmp + tail)
+        if Path(f'{HERE}/var/htmls/{day}.html').exists():
+            if len(head + tmp + tail) >= len(open(f'{HERE}/var/htmls/{day}.html').read()):
+                with open(f'{HERE}/var/htmls/{day}.html', 'w') as fp:
+                    fp.write(head + tmp + tail)
+        else:
+            with open(f'{HERE}/var/htmls/{day}.html', 'w') as fp:
+                fp.write(head + tmp + tail)
 
 
 def run():
@@ -197,7 +252,7 @@ def run():
 
 
 if __name__ == "__main__":
-    # pre_process(N=20000, DAYS=30)
-    # put_local_html()
-    # refrect_html()
+    pre_process(N=100000, DAYS=100)
+    put_local_html()
+    refrect_html()
     post_process()
