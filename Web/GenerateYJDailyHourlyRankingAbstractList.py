@@ -53,7 +53,7 @@ def generate_yj_daily_houry_ranking_abstract_list() -> str:
         # max13件に限定する
         df = df[:13]
         for url, title, category, score in zip(df.url, df.title, df.category, df.score):
-            tmp += f'''<a href="https://{Hostname.hostname()}/blobs_yj/{GetDigest.get_digest(url)}" original="{url}">[{category}] {title}</a>score:{score:0.03f}<br>'''
+            tmp += f'''<div style="font-size:small; white-space: nowrap;"><a href="https://{Hostname.hostname()}/blobs_yj/{GetDigest.get_digest(url)}" original="{url}">[{category}] {title}</a>score:{score:0.03f}</div>'''
         inner += tmp
     return inner
 

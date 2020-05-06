@@ -33,6 +33,18 @@ def generate_top(twitter: Any) -> str:
         - str: htmlをビルドして返却する
     """
     head = '''<html><head><title> Concertion Page </title>
+    <style>
+    .twitter {
+        float: left;
+        width: 500px;
+        margin-left: 10px;
+    }
+    .yj {
+        float: right;
+        width: calc(100% - 500px - 20px);
+        margin-left: 10px;
+    }
+    </style>
     </head>'''
     tail = '</html>'
     body = ''
@@ -57,13 +69,16 @@ def generate_top(twitter: Any) -> str:
     body += '<p><a href="/daily_yj_ranking_list">過去Yahoo Newsで流行ったログ</a></p>'
     body += '<p><a href="/backlog_of_twitter">過去のツイッターのバックログ</a></p></div>'
     # twitter
-    body += '<div class="twitter"><h3>最近のツイッター</h3>'
-    body += GetBuzzTweet.get_buzz_tweet()
-    body += '</div>'
-    # yahoo
-    body += '<div class="yj">'
-    body += GenerateYJDailyHourlyRankingAbstractList.generate_yj_daily_houry_ranking_abstract_list()
-    body += '</div>'
+    body += f"""
+    <div class="wrap">
+        <div class="twitter"><h3>最近のツイッター</h3>'
+            {GetBuzzTweet.get_buzz_tweet()}
+        </div>
+        <div class="yj">
+            {GenerateYJDailyHourlyRankingAbstractList.generate_yj_daily_houry_ranking_abstract_list()}
+        </div>
+    </div>
+    """
 
     body += '<div class="yj_daily_ranking">'
     body += '<h2>過去のYahoo Newsのログ</h2>'
