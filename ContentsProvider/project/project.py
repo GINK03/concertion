@@ -202,7 +202,7 @@ def twitter_(typed, digest):
                 html = fp.read()
             return html
         elif typed in {'jpg', 'jpgs'}:
-            with open(f'{TOP_DIR}/var/Twitter/jpgs/{digest}', 'rb') as fp:
+            with open(f'{TOP_DIR}/mnt/twitter_jpgs/{digest}', 'rb') as fp:
                 binary = fp.read()
             response = make_response(binary)
             response.headers.set('Content-Type', 'image/jpeg')

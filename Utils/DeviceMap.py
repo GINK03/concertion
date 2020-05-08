@@ -14,6 +14,9 @@ def run():
         (f"192.168.40.20:{HOME}/nvme0n1", f"{HOME}/.mnt/favs01"),
         (f"192.168.40.12:{HOME}/sda", f"{HOME}/.mnt/favs02"),
         (f"192.168.40.12:{HOME}/sdd", f"{HOME}/.mnt/favs03"),
+        (f"192.168.40.12:{HOME}/sdc", f"{HOME}/.mnt/favs04"),
+        (f"127.0.0.1:{HOME}/sdc/TwitterImages/jpgs", f"{TOP_DIR}/mnt/twitter_jpgs"),
+        (f"127.0.0.1:{HOME}/var", f"{TOP_DIR}/var"),
     ]:
         if not Path(target).is_mount():
             Path(target).mkdir(exist_ok=True, parents=True)
