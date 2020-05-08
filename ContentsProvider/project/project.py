@@ -33,6 +33,7 @@ try:
     from Web import recent_stats
     from Web import TweetHyoron
     from Web import ResponsibleDevices
+    from Web import GetJQuery
     application.register_blueprint(TweetHyoron.tweet_hyoron)
     # from Web import recent_guradoru
     # from Web import recent_corona
@@ -174,7 +175,11 @@ def backlog_of_twitter_name(name):
     fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/htmls/{name}'
     with open(fn) as fp:
         html = fp.read()
-    return html
+    soup = BeautifulSoup(html, "lxml")
+    soup.find("head").insert(0, BeautifulSoup(GetJQuery.get_jquery(), "html.parser"))
+    soup.find("body").insert(0, BeautifulSoup(ResponsibleDevices.responsible_devices(), "html.parser"))
+    soup.find("body").insert(-1, BeautifulSoup(ResponsibleDevices.responsible_devices(), "html.parser"))
+    return soup.__str__()
 
 
 @application.route("/twitter/input/<day>/<digest>")
