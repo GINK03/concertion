@@ -7,7 +7,8 @@ mount
 ContentsProvider/project/__pycache__/project.cpython-37.pyc
 *.csv
 DataCollection/system/var/
-var
+var/
+mnt/
 var_matching.jp
 ghostdriver.log
 .python-version

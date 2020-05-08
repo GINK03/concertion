@@ -346,12 +346,12 @@ def _get_imgs(arg):
         digest = GetDigest.get_digest(photo)
         original_image_digests.append(digest)
         original_image_urls.append(photo)
-        if Path(f'{TOP_DIR}/var/Twitter/jpgs/{digest}').exists():
+        if Path(f'{TOP_DIR}/mnt/twitter_jpgs/{digest}').exists():
             continue
         try:
             with requests.get(photo, timeout=60) as r:
                 binary = r.content
-            with open(f'{TOP_DIR}/var/Twitter/jpgs/{digest}', 'wb') as fp:
+            with open(f'{TOP_DIR}/mnt/twitter_jpgs/{digest}', 'wb') as fp:
                 fp.write(binary)
         except Exception as exc:
             tb_lineno = sys.exc_info()[2].tb_lineno

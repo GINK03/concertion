@@ -42,7 +42,7 @@ def process(fnts):
                     objs[linkts] = 0
                 objs[linkts] += 1
     except Exception as exc:
-        print(f'[{__file__}] {exc}', file=sys.stderr)
+        print(f'[{FILE}] exc = {exc}', file=sys.stderr)
 objs = {}
 
 def run():

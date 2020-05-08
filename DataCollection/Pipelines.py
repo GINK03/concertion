@@ -128,6 +128,7 @@ def run_suit():
 
 
 def run():
+    # GenerateSitemap.generate.run()
     release_resource()
     while True:
         try:
