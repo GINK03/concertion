@@ -87,6 +87,8 @@ def yj_html_replace(html: str, digest: str) -> str:
         for a in paragraph.find_all("a"):
             if a.get("href"):
                 del a["href"]
+            """ a -> spanに変更 """
+            a.name = "span"
         """ テキストリンクの装飾を消す """
         for a in soup.find_all(attrs={"class": "yjDirectSLinkHl"}):
             del a["class"]
