@@ -80,10 +80,10 @@ def generate_top(twitter: Any) -> str:
     </div>
     """
 
-    body += '<div class="yj_daily_ranking">'
-    body += '<h2>過去のYahoo Newsのログ</h2>'
-    body += GenerateDailyYJRankingList.generate_daily_ranking_list()
-    body += '</div>'
+    # body += '<div class="yj_daily_ranking">'
+    # body += '<h2>過去のYahoo Newsのログ</h2>'
+    # body += GenerateDailyYJRankingList.generate_daily_ranking_list()
+    # body += '</div>'
     return head + body + tail
 
 
