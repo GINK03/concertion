@@ -1,0 +1,14 @@
+[Unit]
+Description=WatchDog SERVICE
+After=network.target
+StartLimitIntervalSec=0
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=gimpei
+Environment=PATH=/home/gimpei/.var/cloud_sdk/google-cloud-sdk/bin:/home/linuxbrew/.linuxbrew/bin:/home/gimpei/.cargo/bin:/home/gimpei/.bin:/home/gimpei/.pyenv/plugins/pyenv-virtualenv/shims:/home/gimpei/.pyenv/shims:/home/gimpei/.pyenv/bin:/home/gimpei/.pyenv/bin:/home/gimpei/.pyenv/bin:/home/gimpei/opt/anaconda3/bin:/home/gimpei/.var/cloud_sdk/google-cloud-sdk/bin:/home/linuxbrew/.linuxbrew/bin:/home/gimpei/.cargo/bin:/home/gimpei/.bin:/home/gimpei/.pyenv/plugins/pyenv-virtualenv/shims:/home/gimpei/.pyenv/shims:/home/gimpei/.pyenv/bin:/home/gimpei/.pyenv/bin:/home/gimpei/.pyenv/bin:/home/gimpei/opt/anaconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/home/gimpei/.pyenv/versions/pypy3.6-7.2.0/bin:/home/gimpei/.pyenv/versions/pypy3.6-7.2.0/bin
+ExecStart=/usr/bin/env python3 /home/gimpei/.mnt/14/nvme1n1/concertion/Utils/WatchDog.py
+
+[Install]
+WantedBy=multi-user.target
