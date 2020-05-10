@@ -17,6 +17,7 @@ try:
     import TwitterIFrames
     import YahooJapanSystem
     import GenerateSitemap
+    import Signate
     sys.path.append(f'{TOP_DIR}')
     import Utils
 except Exception as exc:
@@ -61,6 +62,15 @@ def run_suit():
         Utils.CleanTmpDir.run()
     except Exception as exc:
         print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] error occured {exc}', file=sys.stderr)
+   
+    """
+    Signateの最近のコンペの状況を把握する
+    """
+    try:
+        Signate.Signate.run()
+    except Exception as exc:
+        tb_lineno = sys.exc_info()[2].tb_lineno
+        print(f'[{FILE}] exc = {exc}, tb_lineno = {tb_lineno}', file=sys.stderr)
     
     """
     流行ったツイート過去N日分を集計して正しくバッグログに反映する

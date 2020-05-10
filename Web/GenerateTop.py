@@ -10,9 +10,9 @@ from flask_dance.contrib.twitter import make_twitter_blueprint, twitter
 
     
 FILE = Path(__file__)
-TOP_FOLDER = Path(__file__).resolve().parent.parent
+TOP_DIR = Path(__file__).resolve().parent.parent
 try:
-    sys.path.append(f'{TOP_FOLDER}')
+    sys.path.append(f'{TOP_DIR}')
     from Web import GenerateYJDailyHourlyRankingAbstractList
     from Web import GenerateDailyYJRankingList
     from Web.Structures import DayAndPath
@@ -20,6 +20,7 @@ try:
     from Web import Base64EncodeDecode
     from Web import Hostname
     from Web import GetBuzzTweet
+    from Web import GenerateSignate
 except Exception as exc:
     tb_lineno = sys.exc_info()[2].tb_lineno
     raise Exception(f"[{FILE}] import error, exc = {exc}, tb_lineno = {tb_lineno}")
@@ -37,6 +38,11 @@ def generate_top(twitter: Any) -> str:
     .twitter {
         float: left;
         width: 500px;
+        margin-left: 10px;
+    }
+    .signate {
+        float: right;
+        width: calc(100% - 500px - 20px);
         margin-left: 10px;
     }
     .yj {
@@ -63,16 +69,19 @@ def generate_top(twitter: Any) -> str:
     body += '<p><a href="/recent_stats/グラドル/0">最近人気のグラドル</a>    <a href="/backlog_of_stats/グラドル">過去のグラドルのバックログ</a></p>'
     body += '<p><a href="/recent_stats/同人/0">最近人気の同人</a>    <a href="/backlog_of_stats/同人">過去の同人のバックログ</a></p>'
     body += '<p><a href="/recent_stats/可愛い/0">最近人気の可愛い</a>    <a href="/backlog_of_stats/可愛い">過去の可愛いのバックログ</a></p>'
-    """ これはコンテンツの作り込みが薄くサスペンド """
 
     body += "</div><h3>過去ログ</h3>"
     body += '<p><a href="/daily_yj_ranking_list">過去Yahoo Newsで流行ったログ</a></p>'
     body += '<p><a href="/backlog_of_twitter">過去のツイッターのバックログ</a></p></div>'
     # twitter
+
     body += f"""
     <div class="wrap">
-        <div class="twitter"><h3>最近のツイッター</h3>'
+        <div class="twitter"><h3>最近のツイッター</h3>
             {GetBuzzTweet.get_buzz_tweet()}
+        </div>
+        <div class="signate"><h3>最近のSignate</h3>
+            {GenerateSignate.generate_signate()}
         </div>
         <div class="yj">
             {GenerateYJDailyHourlyRankingAbstractList.generate_yj_daily_houry_ranking_abstract_list()}
@@ -80,10 +89,6 @@ def generate_top(twitter: Any) -> str:
     </div>
     """
 
-    # body += '<div class="yj_daily_ranking">'
-    # body += '<h2>過去のYahoo Newsのログ</h2>'
-    # body += GenerateDailyYJRankingList.generate_daily_ranking_list()
-    # body += '</div>'
     return head + body + tail
 
 

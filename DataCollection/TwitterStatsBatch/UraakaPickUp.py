@@ -625,7 +625,8 @@ if __name__ == "__main__":
     """
     1. このプログラムを単体で実行すると、4時間ごとにデータを収集して更新する
     """
-    run()
+    while True:
+        run()
     schedule.every(4).hours.do(run)
     while True:
         schedule.run_pending()
