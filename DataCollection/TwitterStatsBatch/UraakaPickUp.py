@@ -94,11 +94,14 @@ def _statical_pick_up(arg):
                 idx2 = random.choice(list(range(len(tweets))))
                 batch2 = tweets[min(idx2 - 3, 0): idx2 + 3]
                 cnt2 += 1
-                for term in set(mecab.parse(" ".join([b.tweet for b in batch2]).lower()).strip().split()):
-                    if term not in term_freq2:
-                        term_freq2[term] = 0
-                    term_freq2[term] += 1
-
+                try:
+                    for term in set(mecab.parse(" ".join([b.tweet for b in batch2]).lower()).strip().split()):
+                        if term not in term_freq2:
+                            term_freq2[term] = 0
+                        term_freq2[term] += 1
+                except Exception as exc:
+                    """ 形態素解析に失敗することがある？ """
+                    print(exc)
                 for photos in [b.photos for b in batch2]:
                     for photo in photos:
                         if photo is None:
@@ -625,8 +628,8 @@ if __name__ == "__main__":
     """
     1. このプログラムを単体で実行すると、4時間ごとにデータを収集して更新する
     """
-    while True:
-        run()
+    # while True:
+    run()
     schedule.every(4).hours.do(run)
     while True:
         schedule.run_pending()
