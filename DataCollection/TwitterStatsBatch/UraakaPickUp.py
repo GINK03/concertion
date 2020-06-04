@@ -21,6 +21,7 @@ import psutil
 from bs4 import BeautifulSoup
 from typing import Tuple, Union, Dict, List, Set
 import shutil
+import gzip
 
 Tweet = namedtuple("Tweet", ["tweet", "username", "photos"])
 
@@ -53,13 +54,20 @@ def _statical_pick_up(arg):
     for json_fn in glob.glob(f"{user_dir}/*"):
         try:
             tweets = []
-            for line in open(json_fn):
-                line = line.strip()
-                try:
-                    obj = json.loads(line)
-                except:
-                    continue
-                tweets.append(Tweet(obj["tweet"], f"@{obj['username']}", obj["photos"]))
+            
+            if re.search("\.gz$", json_fn):
+                fp = gzip.open(json_fn, "rt")
+            else:
+                fp = open(json_fn)
+            
+            with fp:
+                for line in fp:
+                    line = line.strip()
+                    try:
+                        obj = json.loads(line)
+                    except:
+                        continue
+                    tweets.append(Tweet(obj["tweet"], f"@{obj['username']}", obj["photos"]))
         except:
             continue
 
@@ -213,15 +221,21 @@ def _find_joinable_tweet_ids(arg) -> List[Tuple[str, List[str]]]:
     for json_fn in glob.glob(f"{user_dir}/*"):
         try:
             # tweets = []
-            for line in open(json_fn):
-                line = line.strip()
-                try:
-                    obj = json.loads(line)
-                except:
-                    continue
-                dlp = DateLikePhotos(obj["date"], obj["likes_count"], obj["photos"], obj["link"])
-                ret = (obj["link"], dlp)
-                rets.append(ret)
+            if re.search("\.gz$", json_fn):
+                fp = gzip.open(json_fn, "rt")
+            else:
+                fp = open(json_fn)
+
+            with fp:
+                for line in fp:
+                    line = line.strip()
+                    try:
+                        obj = json.loads(line)
+                    except:
+                        continue
+                    dlp = DateLikePhotos(obj["date"], obj["likes_count"], obj["photos"], obj["link"])
+                    ret = (obj["link"], dlp)
+                    rets.append(ret)
                 # tweets.append(Tweet(obj['tweet'], f"@{obj['username']}", obj["photos"]))
         except:
             continue

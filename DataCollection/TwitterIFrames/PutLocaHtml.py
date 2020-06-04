@@ -91,5 +91,5 @@ def read_csv_batch_backlog_and_put_to_local(path_str=None):
 
 if __name__ == '__main__':
     # put_local_html('https://twitter.com/kagamiisukeee/status/1228872466916769792')
-    # read_csv_and_put_to_local()
-    read_csv_batch_backlog_and_put_to_local()
+    read_csv_and_put_to_local()
+    # read_csv_batch_backlog_and_put_to_local()

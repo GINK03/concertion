@@ -6,5 +6,5 @@ def get_digest(x):
     elif isinstance(x, bytes):
         return sha224(x).hexdigest()[:24]
     else:
-        raise Exception("Not Found Error")
+        raise Exception(f"Not Found Typed-Error, {x}")
 

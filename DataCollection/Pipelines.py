@@ -5,6 +5,7 @@ from inspect import currentframe, getframeinfo
 import os
 from os import environ as E
 import datetime
+import random
 
 FILE = Path(__file__).name
 HERE = Path(__file__).resolve().parent
@@ -94,9 +95,11 @@ def run_suit():
     
     """
     最新の流行ったツイートを集計して表示できるようにする
+    NOTE: glob.globで最新のファイルを探しており、とても重い -> 結果的にtrafficが爆発しているので、5%で走るようにする
     """
     try:
-        TwitterIFrames.WrapRecentBuzzTweets.run()
+        if random.random() <= 0.05:
+            TwitterIFrames.WrapRecentBuzzTweets.run()
     except Exception as exc:
         print(f'[{FILE}][{getframeinfo(currentframe()).lineno}] error occured {exc}', file=sys.stderr)
     
