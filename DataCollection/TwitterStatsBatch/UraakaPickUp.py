@@ -1,3 +1,4 @@
+import socket
 import time
 import schedule
 import requests
@@ -23,7 +24,7 @@ from typing import Tuple, Union, Dict, List, Set
 import shutil
 import gzip
 
-Tweet = namedtuple("Tweet", ["tweet", "username", "photos"])
+Tweet = namedtuple("Tweet", ["tweet", "username", "url"])
 
 HOME = E.get("HOME")
 HERE = Path(__file__).resolve().parent
@@ -46,82 +47,71 @@ assert mecab.parse("新型コロナウイルス").strip().split() == ["新型コ
 
 
 def _statical_pick_up(arg):
-    keyword, user_dir = arg
+    keyword, user_favorite = arg
     term_freq = {}
     term_freq2 = {}
     cnt = 0
     cnt2 = 0
-    for json_fn in glob.glob(f"{user_dir}/*"):
-        try:
-            tweets = []
-            
-            if re.search("\.gz$", json_fn):
-                fp = gzip.open(json_fn, "rt")
-            else:
-                fp = open(json_fn)
-            
-            with fp:
-                for line in fp:
-                    line = line.strip()
-                    try:
-                        obj = json.loads(line)
-                    except:
-                        continue
-                    tweets.append(Tweet(obj["tweet"], f"@{obj['username']}", obj["photos"]))
-        except:
-            continue
-
-        require_size = 1
-        # idxs = [idx for idx, tweet in enumerate(tweets) if keyword in set(mecab.parse(tweet.tweet.lower()).split())]
-        idxs = [idx for idx, tweet in enumerate(tweets) if keyword in tweet.tweet.lower()]
-
-        for idx in idxs:
-            batch = tweets[min(idx - 3, 0): idx + 3]
-            cnt += 1
-
-            for term in set(mecab.parse(" ".join([b.tweet for b in batch]).lower()).strip().split()):
-                if term not in term_freq:
-                    term_freq[term] = 0
-                term_freq[term] += 1
-
-            for photos in [b.photos for b in batch]:
-                for photo in photos:
-                    if photo is None:
-                        continue
-                    if photo not in term_freq:
-                        term_freq[photo] = 0
-                    term_freq[photo] += 1
-
-            for username in [b.username for b in batch]:
-                if username not in term_freq:
-                    term_freq[username] = 0
-                term_freq[username] += 1
-
-        if len(tweets) != 0:
-            for N in range(5):
-                idx2 = random.choice(list(range(len(tweets))))
-                batch2 = tweets[min(idx2 - 3, 0): idx2 + 3]
-                cnt2 += 1
+    try:
+        tweets = []
+        fp = gzip.open(user_favorite, "rt")
+        with fp:
+            for line in fp:
+                line = line.strip()
                 try:
-                    for term in set(mecab.parse(" ".join([b.tweet for b in batch2]).lower()).strip().split()):
-                        if term not in term_freq2:
-                            term_freq2[term] = 0
-                        term_freq2[term] += 1
-                except Exception as exc:
-                    """ 形態素解析に失敗することがある？ """
-                    print(exc)
-                for photos in [b.photos for b in batch2]:
-                    for photo in photos:
-                        if photo is None:
-                            continue
-                        if photo not in term_freq2:
-                            term_freq2[photo] = 0
-                        term_freq2[photo] += 1
+                    obj = json.loads(line)
+                except:
+                    continue
+                tweets.append(Tweet(obj["text"], f"@{obj['username']}", obj["status_url"]))
+    except Exception as exc:
+        print(exc)
 
-                for username in [b.username for b in batch2]:
-                    if username not in term_freq2:
-                        term_freq2[username] = 0
-                    term_freq2[username] += 1
+    require_size = 1
+    # idxs = [idx for idx, tweet in enumerate(tweets) if keyword in set(mecab.parse(tweet.tweet.lower()).split())]
+    idxs = [idx for idx, tweet in enumerate(tweets) if keyword in tweet.tweet.lower()]
+    idxs = random.sample(idxs, min(10, len(idxs)))
+
+    for idx in idxs:
+        batch = tweets[min(idx - 3, 0): idx + 3]
+        cnt += 1
+
+        for term in set(mecab.parse(" ".join([b.tweet for b in batch]).lower()).strip().split()):
+            if term not in term_freq:
+                term_freq[term] = 0
+            term_freq[term] += 1
+
+        for url in [b.url for b in batch]:
+            if url not in term_freq:
+                term_freq[url] = 0
+            term_freq[url] += 1
+
+        for username in [b.username for b in batch]:
+            if username not in term_freq:
+                term_freq[username] = 0
+            term_freq[username] += 1
+
+    if len(tweets) != 0:
+        for N in range(5):
+            idx2 = random.choice(list(range(len(tweets))))
+            batch2 = tweets[min(idx2 - 3, 0): idx2 + 3]
+            cnt2 += 1
+            try:
+                for term in set(mecab.parse(" ".join([b.tweet for b in batch2]).lower()).strip().split()):
+                    if term not in term_freq2:
+                        term_freq2[term] = 0
+                    term_freq2[term] += 1
+            except Exception as exc:
+                """ 形態素解析に失敗することがある？ """
+                print(exc)
+            for url in [b.url for b in batch2]:
+                if url not in term_freq2:
+                    term_freq2[url] = 0
+                term_freq2[url] += 1
+
+            for username in [b.username for b in batch2]:
+                if username not in term_freq2:
+                    term_freq2[username] = 0
+                term_freq2[username] += 1
     return term_freq, cnt, term_freq2, cnt2
 
 
@@ -136,9 +126,30 @@ def statical_pickup(count=20000, keyword="裏垢"):
     term_freq, term_freq2 = {}, {}
     cnt, cnt2 = 0, 0
 
-    most_recent_disk = sorted(glob.glob(f"{HOME}/.mnt/favs*"))[-1]
-    print(f"[{FILE}] target disk is {most_recent_disk}")
-    args = [(keyword, user_dir) for user_dir in glob.glob(f"{most_recent_disk}/*")[-count:]]
+    if socket.gethostname() in {"Fubuki"}:
+        most_recent_disk = f"{HOME}/sdc"
+    else:
+        most_recent_disk = sorted(glob.glob(f"{HOME}/.mnt/favs*"))[-1]
+    print(f"[{FILE}] target disk is {most_recent_disk}, hostname = {socket.gethostname()}")
+    args = [(keyword, user_favorites) for user_favorites in glob.glob(f"{most_recent_disk}/*/FEEDS/FAVORITES_*")[-count:]]
+    '''
+    for arg in tqdm(args, desc="[{FILE}] single run.."):
+        ret = _statical_pick_up(arg)
+        if len(ret) != 4:
+            continue
+        _term_freq, _cnt, _term_freq2, _cnt2 = ret
+        cnt += _cnt
+        for term, freq in _term_freq.items():
+            if term not in term_freq:
+                term_freq[term] = 0
+            term_freq[term] += freq
+
+        cnt2 += _cnt2
+        for term, freq in _term_freq2.items():
+            if term not in term_freq2:
+                term_freq2[term] = 0
+            term_freq2[term] += freq
+    ''' 
     """ this is adhoc """
     with ProcessPoolExecutor(max_workers=psutil.cpu_count()) as exe:
         for _term_freq, _cnt, _term_freq2, _cnt2 in tqdm(exe.map(_statical_pick_up, args), total=len(args), desc=f"[{FILE}] statical_pickup..."):
@@ -153,7 +164,6 @@ def statical_pickup(count=20000, keyword="裏垢"):
                 if term not in term_freq2:
                     term_freq2[term] = 0
                 term_freq2[term] += freq
-
     # サンプルサイズが減りすぎてしまうので、ターゲットに観測されたtermはベースラインで1とする
     delta_terms = set(term_freq) - set(term_freq2)
     for delta_term in delta_terms:
@@ -197,14 +207,14 @@ def filter_statical_pickup():
         df2.to_csv(f"{HERE}/var/{NAME}/filter/terms_{name}", index=None)
 
         # pics
-        df3 = df[df["term"].apply(lambda x: ".jpg" in str(x))]
+        df3 = df[df["term"].apply(lambda x: "https://" in str(x))]
         t3 = sorted(df3[df3.rel >= 0.5].total.tolist())
         th = t3[int(len(t3) * 3 / 10)]
         df3 = df3[df3["total"] >= 10]
         df3 = df3[df3["total"] >= th]
         df3 = df3[df["rel"] >= 0.90]
 
-        df3.to_csv(f"{HERE}/var/{NAME}/filter/pics_{name}", index=None)
+        df3.to_csv(f"{HERE}/var/{NAME}/filter/tweet_status_{name}", index=None)
 
 
 @dataclass
@@ -214,85 +224,25 @@ class DateLikePhotos:
     photos: List[str]
     link: str
 
-
-def _find_joinable_tweet_ids(arg) -> List[Tuple[str, List[str]]]:
-    user_dir = arg
-    rets = []
-    for json_fn in glob.glob(f"{user_dir}/*"):
-        try:
-            # tweets = []
-            if re.search("\.gz$", json_fn):
-                fp = gzip.open(json_fn, "rt")
-            else:
-                fp = open(json_fn)
-
-            with fp:
-                for line in fp:
-                    line = line.strip()
-                    try:
-                        obj = json.loads(line)
-                    except:
-                        continue
-                    dlp = DateLikePhotos(obj["date"], obj["likes_count"], obj["photos"], obj["link"])
-                    ret = (obj["link"], dlp)
-                    rets.append(ret)
-                # tweets.append(Tweet(obj['tweet'], f"@{obj['username']}", obj["photos"]))
-        except:
-            continue
-    return rets
-
-
-def find_joinable_tweet_ids(count=20000):
-    """
-    1. pic_hogehoge.csvは強調されたimage urlであるが、もとのtweet idを失っている
-    2. 再びfavのjsonをスキャンしてtweet id, image url, scoreをジョインする
-    3. df.rel >= x, のxはハイパーパラメータ
-    OUTPUT: pd.DataFrame, link,photosのcsv
-    """
-    for pic_csv_file in glob.glob(f"{HERE}/var/{NAME}/filter/pics_*.csv"):
-        keyword_name = re.search(r'pics_(.{1,}).csv', pic_csv_file).group(1)
-
-        photos: Set[str] = set()
-
-        df = pd.read_csv(pic_csv_file)
-        # df = df[df.rel >= 0.93]
-        photos |= set(df.term.tolist())
-        """ fav00 ~  favXXまでナンバリングされている """
-        most_recent_disk = sorted(glob.glob(f"{HOME}/.mnt/favs*"))[-1]
-        args = [(user_dir) for user_dir in tqdm(glob.glob(f"{most_recent_disk}/*")[-count:], desc=f"[{FILE}] scan files in find_joinable_tweet_ids...")]
-
-        link_dlp = {}
-        with ProcessPoolExecutor(max_workers=psutil.cpu_count()) as exe:
-            for _rets in tqdm(exe.map(_find_joinable_tweet_ids, args), total=len(args), desc=f"[{FILE}][{keyword_name}] joining photo url <-> tweet id..."):
-                for link, dlp in _rets:
-                    """
-                    1. 特定のキーワードかそれ以外で動作を分ける
-                    NOTE: "コロナ"のとき、画像以外も対象で、likes_count >= 100とする
-                    """
-                    if "コロナ" in keyword_name:
-                        if dlp.likes_count >= 100:
-                            link_dlp[link] = dlp
-                    else:
-                        if len(photos & set(dlp.photos)) != 0:
-                            if link not in link_dlp:
-                                link_dlp[link] = dlp
-
-        df = pd.DataFrame({"link": list(link_dlp.keys()), "photos": [dlp.photos for dlp in link_dlp.values()], "likes_count": [dlp.likes_count for dlp in link_dlp.values()], "date": [dlp.date for dlp in link_dlp.values()]})
-        df["photos"] = df["photos"].apply(json.dumps)
-        df.to_csv(f"{HERE}/var/{NAME}/link_photos_date_likes_{keyword_name}.csv", index=None)
-
+def url2utc(status_url):
+    snowflake = int(re.search("/(\d{1,})$", status_url).group(1))
+    # UTC!
+    ts = datetime.datetime.fromtimestamp(((snowflake >> 22) + 1288834974657) / 1000)
+    ts += datetime.timedelta(hours=9)
+    return ts.strftime("%Y-%m-%d")
 
 def put_local_html(N=10000):
     """
     1. ../TwitterIFrames/PutLocaHtml.pyを呼び出し、実行
     2. date, likes_countの順で高順にソートして、top Nを取り出す
     """
-    for csv_file in glob.glob(f"{HERE}/var/{NAME}/link_photos_date_likes_*.csv"):
+    for csv_file in glob.glob(f"{HERE}/var/{NAME}/filter/tweet_status_*.csv"):
         df = pd.read_csv(csv_file)
-        df.sort_values(by=["date", "likes_count"], ascending=False, inplace=True)
+        df["date"] = df["term"].apply(url2utc)
+        df.sort_values(by=["date", "term_num"], ascending=False, inplace=True)
         df = df[:N]
         df["date"]: pd.Series[str] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
-        for url, date in zip(df.link, df.date):
+        for url, date in zip(df.term, df.date):
             TwitterIFrames.PutLocaHtml.put_local_html(url=url, date=date)
 
 
@@ -312,10 +262,13 @@ def refrect_html(N=10000):
     4. NUM(プロセス数)はコア数の3倍を想定
     """
     NUM = psutil.cpu_count() * 3
-    for csv_file in glob.glob(f"{HERE}/var/{NAME}/link_photos_date_likes_*.csv"):
-        keyword_name = re.search(r"link_photos_date_likes_(.{1,}).csv", csv_file).group(1)
+    
+    for csv_file in glob.glob(f"{HERE}/var/{NAME}/filter/tweet_status_*.csv"):
+        keyword_name = re.search(r"tweet_status_(.{1,}).csv", csv_file).group(1)
         df = pd.read_csv(csv_file)
-        df.sort_values(by=["date", "likes_count"], ascending=False, inplace=True)
+        df["date"] = df["term"].apply(url2utc)
+
+        df.sort_values(by=["date", "term_num"], ascending=False, inplace=True)
         df = df[:N]
 
         df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
@@ -324,7 +277,7 @@ def refrect_html(N=10000):
         """
         一様にシャッフルしないと一部のProcessに負荷が偏りすぎる（おそらくhtml取得の失敗が再現されてしまうため）
         """
-        urldays = [(url, day) for url, day in zip(df.link, df.date)]
+        urldays = [(url, day) for url, day in zip(df.term, df.date)]
         random.shuffle(urldays)
         for idx, (url, day) in enumerate(urldays):
             key = idx % NUM
@@ -387,7 +340,9 @@ def get_imgs(N=10000):
     for csv_file in glob.glob(f"{HERE}/var/{NAME}/link_photos_date_likes_*.csv"):
         keyword_name = re.search(r"link_photos_date_likes_(.{1,}).csv", csv_file).group(1)
         df = pd.read_csv(csv_file)
-        df.sort_values(by=["date", "likes_count"], ascending=False, inplace=True)
+
+        df["date"] = df["term"].apply(url2utc)
+        df.sort_values(by=["date", "term_num"], ascending=False, inplace=True)
         df = df[:N]
 
         args = [(link, photos) for link, photos in zip(df.link, df.photos.apply(json.loads))]
@@ -401,10 +356,12 @@ def post_process(N=10000):
     1. 静的なhtmlを日付粒度で作る
     2. 最新の情報を見ていないので別プロセスで構築する必要がある
     """
-    for csv_file in glob.glob(f"{HERE}/var/{NAME}/link_photos_date_likes_*.csv"):
-        keyword_name = re.search(r"link_photos_date_likes_(.{1,}).csv", csv_file).group(1)
+    for csv_file in glob.glob(f"{HERE}/var/{NAME}/filter/tweet_status_*.csv"):
+        keyword_name = re.search(r"tweet_status_(.{1,}).csv", csv_file).group(1)
         df = pd.read_csv(csv_file)
-        df.sort_values(by=["date", "likes_count"], ascending=False, inplace=True)
+        df["date"] = df["term"].apply(url2utc)
+
+        df.sort_values(by=["date", "term_num"], ascending=False, inplace=True)
         df = df[:N]
 
         df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
@@ -412,9 +369,9 @@ def post_process(N=10000):
 
         for day, sub in df.groupby(by=["date"]):
             sub = sub.copy()
-            sub.sort_values(by=['likes_count'], ascending=False, inplace=True)
+            sub.sort_values(by=['term_num'], ascending=False, inplace=True)
             args = []
-            for idx, (url) in enumerate(sub.link):
+            for idx, (url) in enumerate(sub.term):
                 args.append((idx, day, url, len(df)))
 
             tmp = ""
@@ -459,6 +416,7 @@ def _post_process_recent(arg):
         tmp = ""
 
         digest = GetDigest.get_digest(url)
+        '''
         """
         originalのイメージとと都合するため, `var/Twitter/original_images/map` を参照
         """
@@ -466,6 +424,7 @@ def _post_process_recent(arg):
             print("イメージをフェッチできていないよ")
             return None
         original_image_digests = json.load(open(f'{TOP_DIR}/var/Twitter/original_images/maps/{digest}'))["original_image_digests"]
+        '''
         if Path(f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}').exists():
             try:
                 with open(f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}') as fp:
@@ -490,13 +449,14 @@ def _post_process_recent(arg):
                 """
                 linkに評論のリンクを追加する　
                 """
-                append_soup = BeautifulSoup(sandbox_root.find(attrs={"class":"CallToAction"}).__str__(), "lxml")
+                append_soup = BeautifulSoup(sandbox_root.find(attrs={"class": "CallToAction"}).__str__(), "lxml")
                 try:
-                    if append_soup.find(attrs={"class":"CallToAction-text"}).string is not None:
-                        append_soup.find(attrs={"class":"CallToAction-text"}).string = "評論する"
+                    if append_soup.find(attrs={"class": "CallToAction-text"}).string is not None:
+                        append_soup.find(attrs={"class": "CallToAction-text"}).string = "評論する"
                         for a in append_soup.find_all("a", {"href": True}):
-                            a["href"] = f"/TweetHyoron/{day}/{digest}"
-                        sandbox_root.find(attrs={"class":"EmbeddedTweet-tweetContainer"}).insert(-1, append_soup)
+                            # a["href"] = f"/TweetHyoron/{day}/{digest}"
+                            pass
+                        sandbox_root.find(attrs={"class": "EmbeddedTweet-tweetContainer"}).insert(-1, append_soup)
                 except Exception as exc:
                     print(exc)
                 """
@@ -515,21 +475,22 @@ def _post_process_recent(arg):
                     xa = soup.find(attrs={'class': 'Tweet-card'}).find_all('a')  # , {'class': 'MediaCard-mediaAsset'})
                     for a in xa:
                         a["target"] = "_blank"
-                        if len(original_image_digests) > 0:
-                            a['href'] = f'/twitter/jpgs/{original_image_digests[0]}'
+                        
+                        # if len(original_image_digests) > 0:
+                            # a['href'] = f'/twitter/jpgs/{original_image_digests[0]}'
                             # a["href"] = "#"
-                            a["data-featherlight"] = 'image'
+                            # a["data-featherlight"] = 'image'
                 """
                 2. imgのURLをLocalURLに張替え
                 """
                 if soup.find('a', {'class': 'ImageGrid-image'}):
                     imagegrids = soup.find_all('a', {'class': 'ImageGrid-image'})
-                    for imagegrid, original_image_digest in zip(imagegrids, original_image_digests):
-                        src = imagegrid.find('img').get('src')
+                    # for imagegrid, original_image_digest in zip(imagegrids, original_image_digests):
+                        # src = imagegrid.find('img').get('src')
                         # imagegrid['href'] = src
-                        imagegrid['href'] = f'/twitter/jpgs/{original_image_digest}'
+                        # imagegrid['href'] = f'/twitter/jpgs/{original_image_digest}'
                         # imagegrid['href'] = '#'
-                        imagegrid["data-featherlight"] = 'image'
+                        # imagegrid["data-featherlight"] = 'image'
             except Exception as exc:
                 lineno = sys.exc_info()[2].tb_lineno
                 print(f'[{FILE}] post_process exception, exc = {exc}, url = {url}, line = {lineno}', file=sys.stderr)
@@ -544,7 +505,10 @@ def _post_process_recent(arg):
             NOTE 10の倍数のとき読み込む
             """
             if idx == df_size - 1 or idx == 0 or idx % 10 == 0:
-                tmp += str(sandbox_root) + str(outer_style)
+                try:
+                    tmp += str(sandbox_root) + str(outer_style)
+                except Exception as exc:
+                    print(exc)
             else:
                 tmp += str(sandbox_root)
         return tmp
@@ -561,21 +525,23 @@ def post_process_recent():
     3. 重いので40ページごとsplit
     """
     Path(f'{HERE}/var/{NAME}/recents/').mkdir(exist_ok=True, parents=True)
-    for csv_file in glob.glob(f"{HERE}/var/{NAME}/link_photos_date_likes_*.csv"):
-        keyword_name = re.search(r"link_photos_date_likes_(.{1,}).csv", csv_file).group(1)
+    for csv_file in glob.glob(f"{HERE}/var/{NAME}/filter/tweet_status_*.csv"):
+        keyword_name = re.search(r"tweet_status_(.{1,}).csv", csv_file).group(1)
         df = pd.read_csv(csv_file)
-        df.sort_values(by=["date", "likes_count"], ascending=False, inplace=True)
+        df["date"] = df["term"].apply(url2utc)
+        df.sort_values(by=["date", "term_num"], ascending=False, inplace=True)
         df = df[:1000]
 
         df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
 
         args = []
-        for idx, (day, url) in tqdm(enumerate(zip(df.date, df.link)), desc=f"[{FILE}] building html...", total=len(df)):
+        for idx, (day, url) in tqdm(enumerate(zip(df.date, df.term)), desc=f"[{FILE}] building html...", total=len(df)):
             args.append((idx, day, url, len(df)))
 
         tmps = []
         with ProcessPoolExecutor(max_workers=24) as exe:
             for _tmp in exe.map(_post_process_recent, args):
+                print(_tmp)
                 if _tmp is not None:
                     tmps.append(_tmp)
         head = f"""<html><head><title>最新 {keyword_name}</title>
@@ -628,12 +594,13 @@ def run():
     statical_pickup(count=50000, keyword="同人")
     statical_pickup(count=50000, keyword="可愛い")
     filter_statical_pickup()
-    find_joinable_tweet_ids(count=50000)
+
     put_local_html()
     refrect_html()
-    get_imgs()
+    # get_imgs()
     post_process_recent()
     post_process()
+
     delete_chrome_tmp()
     print("finish run...")
 
