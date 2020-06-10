@@ -69,26 +69,19 @@ def _statical_pick_up(arg):
     require_size = 1
     # idxs = [idx for idx, tweet in enumerate(tweets) if keyword in set(mecab.parse(tweet.tweet.lower()).split())]
     idxs = [idx for idx, tweet in enumerate(tweets) if keyword in tweet.tweet.lower()]
-    idxs = random.sample(idxs, min(10, len(idxs)))
 
     for idx in idxs:
-        batch = tweets[min(idx - 3, 0): idx + 3]
+        batch = tweets[min(idx - 10, 0): idx + 10]
         cnt += 1
 
         for term in set(mecab.parse(" ".join([b.tweet for b in batch]).lower()).strip().split()):
-            if term not in term_freq:
-                term_freq[term] = 0
-            term_freq[term] += 1
+            term_freq[term] = 1
 
         for url in [b.url for b in batch]:
-            if url not in term_freq:
-                term_freq[url] = 0
-            term_freq[url] += 1
+            term_freq[url] = 1
 
         for username in [b.username for b in batch]:
-            if username not in term_freq:
-                term_freq[username] = 0
-            term_freq[username] += 1
+            term_freq[username] = 1
 
     if len(tweets) != 0:
         for N in range(5):
@@ -97,21 +90,15 @@ def _statical_pick_up(arg):
             cnt2 += 1
             try:
                 for term in set(mecab.parse(" ".join([b.tweet for b in batch2]).lower()).strip().split()):
-                    if term not in term_freq2:
-                        term_freq2[term] = 0
-                    term_freq2[term] += 1
+                    term_freq2[term] = 1
             except Exception as exc:
                 """ 形態素解析に失敗することがある？ """
                 print(exc)
             for url in [b.url for b in batch2]:
-                if url not in term_freq2:
-                    term_freq2[url] = 0
-                term_freq2[url] += 1
+                term_freq2[url] = 1
 
             for username in [b.username for b in batch2]:
-                if username not in term_freq2:
-                    term_freq2[username] = 0
-                term_freq2[username] += 1
+                term_freq2[username] = 1
     return term_freq, cnt, term_freq2, cnt2
 
 
@@ -131,7 +118,7 @@ def statical_pickup(count=20000, keyword="裏垢"):
     else:
         most_recent_disk = sorted(glob.glob(f"{HOME}/.mnt/favs*"))[-1]
     print(f"[{FILE}] target disk is {most_recent_disk}, hostname = {socket.gethostname()}")
-    args = [(keyword, user_favorites) for user_favorites in glob.glob(f"{most_recent_disk}/*/FEEDS/FAVORITES_*")[-count:]]
+    args = [(keyword, user_favorites) for user_favorites in glob.glob(f"{most_recent_disk}/*/FEEDS/FAVORITES_*")[-(count*2):]]
     '''
     for arg in tqdm(args, desc="[{FILE}] single run.."):
         ret = _statical_pick_up(arg)
@@ -209,10 +196,9 @@ def filter_statical_pickup():
         # pics
         df3 = df[df["term"].apply(lambda x: "https://" in str(x))]
         t3 = sorted(df3[df3.rel >= 0.5].total.tolist())
-        th = t3[int(len(t3) * 3 / 10)]
         df3 = df3[df3["total"] >= 10]
-        df3 = df3[df3["total"] >= th]
-        df3 = df3[df["rel"] >= 0.90]
+        df3 = df3[df3["rel"] >= 0.90]
+        df3 = df3[df3["term_num"] > 1]
 
         df3.to_csv(f"{HERE}/var/{NAME}/filter/tweet_status_{name}", index=None)
 
@@ -475,7 +461,7 @@ def _post_process_recent(arg):
                     xa = soup.find(attrs={'class': 'Tweet-card'}).find_all('a')  # , {'class': 'MediaCard-mediaAsset'})
                     for a in xa:
                         a["target"] = "_blank"
-                        
+                        a["href"] = a.find("img").get("src") # href
                         # if len(original_image_digests) > 0:
                             # a['href'] = f'/twitter/jpgs/{original_image_digests[0]}'
                             # a["href"] = "#"
@@ -485,6 +471,9 @@ def _post_process_recent(arg):
                 """
                 if soup.find('a', {'class': 'ImageGrid-image'}):
                     imagegrids = soup.find_all('a', {'class': 'ImageGrid-image'})
+                    for imagegrid in imagegrids:
+                        src = imagegrid.find('img').get('src')
+                        imagegrid['href'] = src # 高解像度ではない
                     # for imagegrid, original_image_digest in zip(imagegrids, original_image_digests):
                         # src = imagegrid.find('img').get('src')
                         # imagegrid['href'] = src

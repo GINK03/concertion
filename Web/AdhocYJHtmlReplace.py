@@ -11,6 +11,7 @@ import requests
 
 FILE = Path(__file__).name
 TOP_DIR = Path(__file__).resolve().parent.parent
+HOME = Path.home()
 try:
     sys.path.append(f'{TOP_DIR}')
     from Web.Structures import YJComment
@@ -66,29 +67,52 @@ def yj_html_replace(html: str, digest: str) -> str:
             a.decompose()
         for a in soup.find_all('iframe'):
             a.decompose()
-        soup.find(attrs={'class': 'listPaneltype'}).decompose()
-        soup.find(attrs={'class': 'mainYdn'}).decompose()
-        soup.find(attrs={'id': 'timeline'}).decompose()
-        soup.find(attrs={'id': 'yjSLink'}).decompose()
-        if soup.find(attrs={'class': 'ynDetailRelArticle'}) is not None:
-            soup.find(attrs={'class': 'ynDetailRelArticle'}).decompose()
-        if soup.find(attrs={'class': 'commentBox'}) is not None:
-            soup.find(attrs={'class': 'commentBox'}).decompose()
+        """ 2020/06/09追加 """
+        if soup.find(attrs={"id":"msthd"}):
+            soup.find(attrs={"id":"msthd"}).decompose()
+        if soup.find(attrs={"id":"yjnHeader_nav"}):
+            soup.find(attrs={"id":"yjnHeader_nav"}).decompose()
+        if soup.find(attrs={"id":"uamods-also_read"}):
+            soup.find(attrs={"id":"uamods-also_read"}).decompose()
+        if soup.find(attrs={"id":"newsFeed"}):
+            soup.find(attrs={"id":"newsFeed"}).decompose()
+        if soup.find(attrs={"id":"yjSLink"}):
+            soup.find(attrs={"id":"yjSLink"}).decompose()
+        """ sectionの中に’関連記事’の文字列が含まれていたら削除 """
+        for section in soup.find_all("section"):
+            if "【関連記事】" in section.__str__():
+                section.decompose()
+        """ comment disable button """
+        if soup.find(attrs={"class":"checkbox"}):
+            soup.find(attrs={"class":"checkbox"}).decompose()
+        """ 2020/06 古い削除ルールセット """   
+        for key, value in [("class", "listPaneltype"), 
+                            ("class", "mainYdn"), 
+                            ("id", "timeline"), 
+                            ("id", "yjSLink"), 
+                            ("class", "ynDetailRelArticle"), 
+                            ("class", "commentBox"),
+                            ("id", "contentsFooter"),
+                            ("id", "footer"),
+                            ("id", "stream_title"), 
+                            ("id", "contentsHeader"), 
+                            ("id", "yjnFooter")]:
+            if soup.find(attrs={key:value}):
+                soup.find(attrs={key: value}).decompose()
 
-        soup.find(attrs={'id': 'contentsFooter'}).decompose()
-        soup.find(attrs={'id': 'footer'}).decompose()
-        soup.find(attrs={'class': 'stream_title'}).decompose()
-        soup.find(attrs={'id': 'contentsHeader'}).decompose()
         """ 画像の説明のhrefを消す """
         if soup.find(attrs={"class": "photoOffer"}):
             del soup.find(attrs={"class": "photoOffer"}).find("a")["href"]
-        """ パラグラフ中のリンクを削除 """
-        paragraph = soup.find(attrs={"class": "paragraph"})
-        for a in paragraph.find_all("a"):
-            if a.get("href"):
-                del a["href"]
-            """ a -> spanに変更 """
-            a.name = "span"
+        """ contents中のリンクを削除 """
+        for key, value in [("id", "uamods"), ("id", "paragraph")]:
+            paragraph = soup.find(attrs={key: value})
+            if paragraph is None:
+                continue
+            for a in paragraph.find_all("a"):
+                if a.get("href"):
+                    del a["href"]
+                """ a -> spanに変更 """
+                a.name = "span"
         """ テキストリンクの装飾を消す """
         for a in soup.find_all(attrs={"class": "yjDirectSLinkHl"}):
             del a["class"]
@@ -101,7 +125,7 @@ def yj_html_replace(html: str, digest: str) -> str:
             del a["onmousedown"]
 
         """ stylesheetの一部を削除 """
-        soup.find(attrs={"href": "https://s.yimg.jp/images/jpnews/cre/article/pc/css/article_pc_v7.0.css"}).decompose()
+        # soup.find(attrs={"href": "https://s.yimg.jp/images/jpnews/cre/article/pc/css/article_pc_v7.0.css"}).decompose()
 
         """ 次のページをパースして統合 """
         next_page_li = soup.find("li", attrs={"class": "next"})
@@ -119,7 +143,8 @@ def yj_html_replace(html: str, digest: str) -> str:
 
         """ もとURLを挿入 """
         original_url = soup.find("meta", attrs={"property": "og:url"}).get("content")
-        soup.find(attrs={"class": "articleMain"}).insert(-1, BeautifulSoup(f"""<a href="{original_url}"><p align="center">オリジナルURL</p></a>""", "lxml"))
+        if soup.find(attrs={"class": "contentsWrap"}):
+            soup.find(attrs={"class": "contentsWrap"}).insert(-1, BeautifulSoup(f"""<a href="{original_url}"><p align="center">オリジナルURL</p></a>""", "lxml"))
         # paragraph.find("a", {"class":None, "href":True}).decompose()
     except Exception as exc:
         tb_lineno = sys.exc_info()[2].tb_lineno
@@ -176,11 +201,23 @@ def yj_html_replace(html: str, digest: str) -> str:
         this_site_comments += tmp
 
     try:
-        soup.find('div', {'id': 'sub'}).string = ''
-        soup.find('div', {'id': 'sub'}).insert(1, BeautifulSoup(comment_html, 'html5lib'))
-        soup.find('div', {'id': 'main'}).append(BeautifulSoup(get_form_html(digest), 'html5lib'))
-        soup.find('div', {'id': 'main'}).append(BeautifulSoup(this_site_comments, 'html5lib'))
-        soup.find('div', {'id': 'main'}).append(BeautifulSoup(comment_html_below, 'html5lib'))
+        # print(soup)
+        if soup.find("div", {"id":"sub"}) is not None:
+            target_id = "sub"
+        else:
+            target_id = "yjnSub"
+        with open(f"{HOME}/tmp", "w") as fp:
+            fp.write(soup.__str__())
+        soup.find('div', {'id': target_id}).string = ''
+        soup.find('div', {'id': target_id}).insert(1, BeautifulSoup(comment_html, 'html5lib'))
+        
+        if soup.find(attrs={"id": "contentsWrap"}):
+            target_id = "contentsWrap"
+        else:
+            target_id = "main"
+        soup.find('div', {'id': target_id}).append(BeautifulSoup(get_form_html(digest), 'html5lib'))
+        soup.find('div', {'id': target_id}).append(BeautifulSoup(this_site_comments, 'html5lib'))
+        soup.find('div', {'id': target_id}).append(BeautifulSoup(comment_html_below, 'html5lib'))
     except Exception as exc:
         tb_lineno = sys.exc_info()[2].tb_lineno
         print(f'[{FILE}] exc = {exc}, tb_lineno = {tb_lineno}', file=sys.stderr)

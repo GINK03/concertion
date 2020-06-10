@@ -13,5 +13,5 @@ remount_cmd = f"sshfs gimpei@192.168.40.16:{HOME} {mount_dir} -o nonempty,allow_
 
 for i in range(10):
     os.system(run_cmd)
-    os.sysmte(unmound_cmd)
+    os.system(unmount_cmd)
     os.system(remount_cmd)
