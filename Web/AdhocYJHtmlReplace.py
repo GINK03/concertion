@@ -30,6 +30,7 @@ def get_form_html(digest):
     return html
 
 
+from urllib.parse import urlparse
 def get_nexts(href: str, next_paragraphs: List[BeautifulSoup]) -> None:
     try:
         digest = GetDigest.get_digest(href)
@@ -39,17 +40,25 @@ def get_nexts(href: str, next_paragraphs: List[BeautifulSoup]) -> None:
             with open(f'{TOP_DIR}/var/YJ/NextPages/{digest}', 'rb') as fp:
                 html = gzip.decompress(fp.read()).decode("utf8")
         else:
-            with requests.get(href) as r:
+            o = urlparse(href)._replace(scheme="https", netloc="news.yahoo.co.jp")
+            with requests.get(o.geturl()) as r:
                 html = r.text
             # save
             with open(f'{TOP_DIR}/var/YJ/NextPages/{digest}', 'wb') as fp:
                 fp.write(gzip.compress(bytes(html, "utf8")))
-        next_soup = BeautifulSoup(html, "lxml")
+        next_soup = BeautifulSoup(html, "html5lib")
         next_paragraph = next_soup.find(attrs={"class": "paragraph"})
-        next_paragraphs.append(next_paragraph)
+        if next_paragraph is None:
+            next_paragraph = next_soup.find(attrs={"id": "uamods"})
 
         next_page_li = next_soup.find("li", attrs={"class": "next"})
-        if next_page_li is not None and next_page_li.find("a") is not None:
+        if next_page_li is None:
+            next_page_li = next_soup.find("li", attrs={"class": "pagination_item-next"})
+        for section in next_paragraph.find_all("section"):
+            if "【関連記事】" in section.__str__():
+                section.decompose()
+        next_paragraphs.append(next_paragraph)
+        if next_page_li and next_page_li.find("a"):
             get_nexts(href=next_page_li.find("a").get("href"), next_paragraphs=next_paragraphs)
     except Exception as exc:
         tb_lineno = sys.exc_info()[2].tb_lineno
@@ -109,8 +118,8 @@ def yj_html_replace(html: str, digest: str) -> str:
             if paragraph is None:
                 continue
             for a in paragraph.find_all("a"):
-                if a.get("href"):
-                    del a["href"]
+                # if a.get("href"):
+                #    del a["href"]
                 """ a -> spanに変更 """
                 a.name = "span"
         """ テキストリンクの装飾を消す """
@@ -129,18 +138,41 @@ def yj_html_replace(html: str, digest: str) -> str:
 
         """ 次のページをパースして統合 """
         next_page_li = soup.find("li", attrs={"class": "next"})
-        if next_page_li is not None:
+        if next_page_li is None:
+            next_page_li = soup.find("li", attrs={"class": "pagination_item pagination_item-next"})
+        if next_page_li and next_page_li.find("span"):
             next_paragraphs: List[BeautifulSoup] = []
-            get_nexts(next_page_li.find("a").get("href"), next_paragraphs)
-
+            get_nexts(next_page_li.find("span").get("href"), next_paragraphs)
+            print("total page size", len(next_paragraphs))
             for idx, next_paragraph in enumerate(next_paragraphs):
-                soup.find(attrs={"class": "articleMain"}).insert(-1, next_paragraph)
-                soup.find(attrs={"class": "articleMain"}).insert(-1, BeautifulSoup(f"""<p align="center"> Page {idx+2} </p>""", "lxml"))
+                if soup.find(attrs={"class": "articleMain"}):
+                    soup.find(attrs={"class": "articleMain"}).insert(-1, next_paragraph)
+                    soup.find(attrs={"class": "articleMain"}).insert(-1, BeautifulSoup(f"""<p align="center"> Page {idx+2} </p>""", "lxml"))
+
+                elif soup.find(attrs={"id": "uamods"}):
+                    soup.find(attrs={"id": "uamods"}).insert(-1, next_paragraph)
+                    soup.find(attrs={"id": "uamods"}).insert(-1, BeautifulSoup(f"""<p align="center"> Page {idx+2} </p>""", "lxml"))
+                # print(next_paragraph)
 
             """ pageを示すフッターを消す """
-            soup.find(attrs={"class": "marT10"}).decompose()
-            soup.find(attrs={"class": "fdFt"}).decompose()
-
+            # soup.find(attrs={"class": "marT10"}).decompose()
+            # soup.find(attrs={"class": "fdFt"}).decompose()
+            """ page送りを消す """
+            if soup.find(attrs={"class": "pagination_items"}):
+                for pagination_item in soup.find_all(attrs={"class": "pagination_items"}):
+                    pagination_item.decompose()
+            """ footerを最後以外のものを消す """
+            footers = soup.find_all("footer")
+            if footers.__len__() >= 2:
+                for footer in footers[:-1]:
+                    footer.decompose()
+            """ 次ページは：の文字を消す """
+            for a in soup.find_all("a", attrs={"class": re.compile("sc-.*?")}):
+                if "次ページは：" in a.__str__():
+                    a.decompose()
+            """ remove headers without head """
+            for header in soup.find_all("header")[2:]:
+                header.decompose()
         """ もとURLを挿入 """
         original_url = soup.find("meta", attrs={"property": "og:url"}).get("content")
         if soup.find(attrs={"class": "contentsWrap"}):

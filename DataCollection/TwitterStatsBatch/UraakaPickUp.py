@@ -197,7 +197,16 @@ def filter_statical_pickup():
         df3 = df[df["term"].apply(lambda x: "https://" in str(x))]
         t3 = sorted(df3[df3.rel >= 0.5].total.tolist())
         df3 = df3[df3["total"] >= 10]
-        df3 = df3[df3["rel"] >= 0.90]
+        """
+        あまりピックアップするものがないとき、閾値を緩める
+        """
+        if sum(df3["rel"] >= 0.90) >= 50:
+            df3 = df3[df3["rel"] >= 0.90]
+        elif sum(df3["rel"] >= 0.80) >= 50:
+            df3 = df3[df3["rel"] >= 0.80]
+        else:
+            df3 = df3[df3["rel"] >= 0.70]
+
         df3 = df3[df3["term_num"] > 1]
 
         df3.to_csv(f"{HERE}/var/{NAME}/filter/tweet_status_{name}", index=None)
