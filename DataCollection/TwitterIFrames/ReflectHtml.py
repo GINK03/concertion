@@ -58,17 +58,29 @@ def reflect_html(key: int, day: str, digest: str) -> Union[None, bool]:
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--disable-gpu")
-    options.add_argument("window-size=1024x2024")
+    options.add_argument("window-size=1024x1024")
     options.add_argument(f"user-data-dir=/tmp/{FILE.replace('.py', '')}_{key:06d}")
     options.binary_location = shutil.which("google-chrome")
     try:
         driver = webdriver.Chrome(executable_path=shutil.which("chromedriver"), options=options)
-        driver.get(f"https://concertion.page/twitter/input/{day}/{digest}")
-        time.sleep(2.5)
+        driver.get(f"http://localhost/twitter/input/{day}/{digest}")
+        print('ebug', f"http://localhost/twitter/input/{day}/{digest}")
         html = driver.page_source
+        time.sleep(5)
+        html = driver.page_source
+        driver.save_screenshot(f"/home/gimpei/{digest}.png")
+        driver.switch_to.frame(driver.find_element_by_tag_name("iframe"))
+        # elm = driver.find_element_by_xpath("/html")
+        time.sleep(1)
+        inner_html = driver.page_source
+        # print("inner", inner_html)
+
+        # inner_html = driver.page_source
+        # print(html)
         """get shadow-root"""
-        elm = driver.execute_script("""return document.querySelector("twitter-widget").shadowRoot""")
-        inner_html = elm.get_attribute("innerHTML")
+        # elm = driver.execute_script("""return document.querySelector("twitter-widget").shadowRoot""")
+        # elm = driver.execute_script("""return document.querySelector("twitter-widget").shadowRoot""")
+        # inner_html = elm.get_attribute("innerHTML")
         cleaner = Cleaner(style=True, links=True, add_nofollow=True, page_structure=False, safe_attrs_only=False)
         # print(inner_html)
         soup = BeautifulSoup(inner_html, "lxml")
@@ -111,10 +123,11 @@ def reflect_html(key: int, day: str, digest: str) -> Union[None, bool]:
                 with open(f"{TOP_DIR}/var/Twitter/pngs/{url_digest}", "wb") as fp:
                     fp.write(binary)
                 img["src"] = f"/twitter/pngs/{url_digest}"
-            elif "normal" in url:
+            elif "normal" in url or ".js" in url or ".svg" in url:
                 continue
             else:
-                raise Exception(f"unsupported image! url={url}")
+                continue
+                # raise Exception(f"unsupported image! url={url}")
 
         """adhoc style edit"""
         if soup.find(attrs={"class": "EmbeddedTweet"}):

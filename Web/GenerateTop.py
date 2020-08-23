@@ -55,7 +55,7 @@ def generate_top(twitter: Any) -> str:
     tail = '</html>'
     body = ''
     # titleとか
-    body += '<h1>Concertion.Page SNS時代のバックログと評論</h1>'
+    body += '<h1>Concertion.Page あなたの特徴の解析とお勧め企業</h1>'
     if not twitter.authorized:
         body += "<h3>ログインして便利に使おう</h3>"
         body += '<p><a href="/login">ログイン</a></p>'
@@ -64,30 +64,7 @@ def generate_top(twitter: Any) -> str:
         screen_name = token['screen_name']
         body += f"<h3>こんにちは、{screen_name}さん</h3>"
 
-    body += "<h3>統計的手法によりアカウント発見</h3>"
-    body += '<p><a href="/recent_stats/裏垢女子/0">最近人気の裏垢</a>    <a href="/backlog_of_stats/裏垢女子">過去の裏垢のバックログ</a></p>'
-    body += '<p><a href="/recent_stats/グラドル/0">最近人気のグラドル</a>    <a href="/backlog_of_stats/グラドル">過去のグラドルのバックログ</a></p>'
-    body += '<p><a href="/recent_stats/同人/0">最近人気の同人</a>    <a href="/backlog_of_stats/同人">過去の同人のバックログ</a></p>'
-    body += '<p><a href="/recent_stats/可愛い/0">最近人気の可愛い</a>    <a href="/backlog_of_stats/可愛い">過去の可愛いのバックログ</a></p>'
-
-    body += "</div><h3>過去ログ</h3>"
-    body += '<p><a href="/daily_yj_ranking_list">過去Yahoo Newsで流行ったログ</a></p>'
-    body += '<p><a href="/backlog_of_twitter">過去のツイッターのバックログ</a></p></div>'
-    # twitter
-
-    body += f"""
-    <div class="wrap">
-        <div class="twitter"><h3>最近のツイッター</h3>
-            {GetBuzzTweet.get_buzz_tweet()}
-        </div>
-        <div class="signate"><h3>最近のSignate</h3>
-            {GenerateSignate.generate_signate()}
-        </div>
-        <div class="yj">
-            {GenerateYJDailyHourlyRankingAbstractList.generate_yj_daily_houry_ranking_abstract_list()}
-        </div>
-    </div>
-    """
+    body += f"<div> {GetBuzzTweet.get_buzz_tweet()} </div>"
 
     return head + body + tail
 

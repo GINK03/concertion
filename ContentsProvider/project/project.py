@@ -1,6 +1,7 @@
 import gzip
 import pickle
 from flask import Flask, request, jsonify, render_template, make_response, abort
+from flask import redirect, url_for
 import json
 import requests
 from pathlib import Path
@@ -34,6 +35,8 @@ try:
     from Web import TweetHyoron
     from Web import ResponsibleDevices
     from Web import GetJQuery
+    from Web import GetFeatsOrMake
+    from Web import MakeRecommend
     application.register_blueprint(TweetHyoron.tweet_hyoron)
     # from Web import recent_guradoru
     # from Web import recent_corona
@@ -61,6 +64,11 @@ except Exception as exc:
 print(f'[{FILE}] current hostname = {Hostname.hostname()}', file=sys.stdout)
 
 
+@application.route('/.well-known/acme-challenge/yes_i_have')
+def yes_i_have():
+    return "ok"
+
+
 @application.route("/")
 def home() -> str:
     """
@@ -77,61 +85,67 @@ def home() -> str:
 def login():
     return Login.login()
 
+@application.route("/feat", methods=['get', "post"])
+def feat() -> str:
+    print(request.method)
+    if request.method == "GET":
+        user = request.args.get('user')
+    elif request.method == "POST":
+        user = request.form.get("user").lower()
+        redirect(f"/feat?user={user}")
 
-@application.route('/daily_yj_abstracts/<name>')
-def daily_yj_abstracts(name):
-    return GenerateDailyYJAbstracts.generate_daily_yj_abstracts(name)
+    head = f'<html><head><title>feat</title></head><body>'
+
+    body = f"<p>{user}の特徴！</p>"
+    body += f'<a href="/feat?user={user}">sharable link</a>'
+    df_or_none = GetFeatsOrMake.get(user)
+    if df_or_none is None:
+        raise Exception("存在しません")
+    tmp = df_or_none
+    tmp = tmp[tmp["t"].apply(lambda x: "bit.ly" != x)]
+    tmp = tmp.sort_values(by=["f"], ascending=False)[:2000].sort_values(by=["w"], ascending=False)
+    tmp.drop(["Unnamed: 0", "f", "sample_size", "record_size"], axis=1, inplace=True)
+    body += tmp.to_html(index=None, col_space=200)
+    tail = '</body></html>'
+    html = head + body + tail
+    return html
+
+@application.route("/kigyo", methods=['get', "post"])
+def kigyo() -> str:
+    if request.method == "GET":
+        user = request.args.get('user')
+    elif request.method == "POST":
+        user = request.form.get("user").lower()
+        redirect("/kigyo?user={user}")
+    head = f'<html><head><title>kigyo</title></head><body>'
+    body = f"<p>{user}さんのお勧め企業！</p>"
+    body += f'<a href="/kigyo?user={user}">sharable link</a>'
+    
+    df_or_none = GetFeatsOrMake.get(user)
+    if df_or_none is None:
+        raise Exception("存在しません")
+    tmp = MakeRecommend.run(user)
+    # tmp = pd.read_csv(Path(f"~/.mnt/22/sdb/kigyo/kigyo/tmp/quering/users/{user}.csv.gz"), compression="gzip")
+    kigyos = tmp.drop_duplicates(subset=["kigyo"], keep="last").kigyo
+    buff = []
+    for kigyo in kigyos:
+        sliced = tmp[tmp.kigyo == kigyo]
+        score = sliced.w.sum() * (10**6)
+        sliced = sliced[:10]
+
+        kigyo = sliced.iloc[0].kigyo
+        if "Unnamed: 0" in sliced.columns:
+            sliced.drop(["Unnamed: 0"], axis=1, inplace=True)
+        body += f"<p>{kigyo}がお勧め, score = {score:0.04f}</p>"
+        body += sliced.to_html(index=None, col_space=200)
+    tail = '</body></html>'
+    html = head + body + tail
+    return html
 
 
 @application.route('/recent_stats/<category>/<page_num>')
 def recent_stats_(category: str, page_num: str) -> str:
     return recent_stats.recent_stats(category, page_num)
-
-
-
-
-@application.route("/backlog_of_stats/<category>", methods=['get'])
-def backlog_of_stats_(category: str) -> str:
-    head = f'<html><head><title>backlog of {category}</title></head><body>'
-    body = ''
-    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/{category}_50000/htmls/*'))):
-        name = Path(fn).name
-        date = name.replace(".html", "")
-        tmp = f'''<a href="/backlog_of_stats/{category}/{name}">{date}</a><br>'''
-        body += tmp
-    tail = '</body></html>'
-    html = head + body + ResponsibleDevices.responsible_devices() + tail
-    return html
-
-
-@application.route("/backlog_of_stats/<category>/<name>", methods=['get'])
-def backlog_of_stats_category_name_(category: str, name: str) -> str:
-    """
-    1. html中にはモーダル有効化の<a>タグ中のフラグ(e.g. data-featherlight="image")が存在するので、取り除く
-    2. htmlのbodyの中にスマホ用に画面にフィットさせるJSを注入する
-    Args:
-        - category: 統計的に処理した結果のどれがほしいか
-        - name: 日付等を含んだ具体的な読み込むべきファイル名
-    Retruns:
-        - str: html
-    """
-    fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/UraakaPickUp/{category}_50000/htmls/{name}'
-    with open(fn) as fp:
-        html = fp.read()
-
-    soup = BeautifulSoup(html, "lxml")
-    for a in soup.find_all("a", attrs={"data-featherlight": True}):
-        del a["data-featherlight"]
-    # print(BeautifulSoup(ResponsibleDevices.responsible_devices()))
-    soup.find("body").insert(0, BeautifulSoup(ResponsibleDevices.responsible_devices(), "lxml"))
-    return soup.__str__()
-
-
-
-@application.route("/get_day/<day>", methods=['GET'])
-def get_day(day):
-    data = Base64EncodeDecode.string_base64_pickle(request.args['serialized'])
-    return GetDay.get_day_html(day, data)
 
 
 @application.route("/sitemap", methods=['GET'])
@@ -221,84 +235,6 @@ def twitter_(typed, digest):
     except Exception as exc:
         print(exc)
         return abort(404)
-
-
-@application.route("/gyo")
-def gyo():
-    with open(f'{TOP_DIR}/var/Gyo/html') as fp:
-        html = fp.read()
-    return html
-
-
-@application.route("/gyo2")
-def gyo2():
-    with open(f'{TOP_DIR}/var/Gyo/screenshot.png', 'rb') as fp:
-        png = fp.read()
-    response = make_response(png)
-    response.headers.set('Content-Type', 'image/png')
-    return response
-
-
-@application.route("/blobs/<digest>", methods=['GET'])
-def blobs(digest):
-    if not Path(f'{TOP_DIR}/var/Gyo/blobs/{digest}').exists():
-        return 'ng'
-
-    with open(f'{TOP_DIR}/var/Gyo/blobs/{digest}', 'rb') as fp:
-        data_type = pickle.loads(gzip.decompress(fp.read()))
-    if data_type.type == bytes:
-        response = make_response(data_type.data)
-        response.headers.set('Content-Type', 'image/jpeg')
-        return response
-    elif data_type.type == str:
-        return data_type.data
-    return 'ok'
-
-
-@application.route("/blobs_yj/<digest>", methods=['GET', "POST"])
-def blobs_yj(digest: str) -> str:
-    """
-    Args:
-        - digest: YahooNewsのハッシュ値
-    Return:
-        - str: html, 失敗したら失敗した内容を記述
-    Posts:
-        - YJSubmit: Submit
-        - YJComment: str
-            - コメントが有る場合、コメントををまず保存する
-    """
-    if request.method == 'POST':
-        obj = request.form
-        if obj.get("YJComment"):
-            YJComment = obj["YJComment"]
-            out_dir = f"{TOP_DIR}/var/YJ/YJComment/{digest}"
-            Path(out_dir).mkdir(exist_ok=True, parents=True)
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            with open(f"{out_dir}/{now}", "w") as fp:
-                if twitter.authorized:
-                    json.dump({"YJComment": YJComment, "datetime":now, "screen_name": twitter.token["screen_name"]}, fp, ensure_ascii=False)
-                else:
-                    json.dump({"YJComment": YJComment, "datetime":now, "screen_name": "名無しちゃん"}, fp, ensure_ascii=False)
-
-    try:
-        with open(f'{TOP_DIR}/var/Gyo/blobs/{digest}', 'rb') as fp:
-            try:
-                data_type = pickle.loads(gzip.decompress(fp.read()))
-            except EOFError:
-                Path(f'{TOP_DIR}/var/Gyo/blobs/{digest}').unlink()
-                return 'ng.'
-        if data_type.type == bytes:
-            response = make_response(data_type.data)
-            response.headers.set('Content-Type', 'image/jpeg')
-            return response
-        elif data_type.type == str:
-            html = data_type.data
-            return AdhocYJHtmlReplace.yj_html_replace(html, digest)
-        return 'ok'
-    except Exception as exc:
-        tb_lineno = sys.exc_info()[2].tb_lineno
-        print(f"[{FILE}] exc = {exc}, tb_lineno = {tb_lineno}", file=sys.stderr)
-        return "ng"
 
 
 if __name__ == "__main__":

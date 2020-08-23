@@ -5,13 +5,9 @@ import os
 HERE = Path(__file__).resolve().parent
 
 HOME = Path.home().__str__()
-mount_dir = f"{HOME}/ikazuchi"
 
-run_cmd = f"gunicorn -w 16 --bind 0.0.0.0:443 --chdir {HERE}/project wsgi --keyfile /etc/letsencrypt/live/concertion.page/privkey.pem --certfile /etc/letsencrypt/live/concertion.page/fullchain.pem"
-unmount_cmd = f"fusermount -zu {mount_dir}"
-remount_cmd = f"sshfs gimpei@192.168.40.16:{HOME} {mount_dir} -o nonempty,allow_other,reconnect,identityfile=/home/gimpei/.ssh/id_github"
+run_cmd_web = f"gunicorn -w 16 --bind 0.0.0.0:443 --chdir {HERE}/project wsgi --keyfile /etc/letsencrypt/live/concertion.page/privkey.pem --certfile /etc/letsencrypt/live/concertion.page/fullchain.pem"
+run_cmd_local = f"gunicorn -w 16 --bind 0.0.0.0:80 --chdir {HERE}/project wsgi"
 
 for i in range(10):
-    os.system(run_cmd)
-    os.system(unmount_cmd)
-    os.system(remount_cmd)
+    os.system(run_cmd_web)
