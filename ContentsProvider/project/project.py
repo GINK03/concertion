@@ -1,7 +1,7 @@
 import gzip
 import pickle
 from flask import Flask, request, jsonify, render_template, make_response, abort
-from flask import redirect, url_for
+from flask import redirect, url_for, send_file
 import json
 import requests
 from pathlib import Path
@@ -14,10 +14,12 @@ import sys
 import glob
 import os
 from flask_dance.contrib.twitter import make_twitter_blueprint, twitter
+from loguru import logger
 
 FILE = Path(__file__).name
 TOP_DIR = Path(__file__).resolve().parent.parent.parent
 application = Flask(__name__)
+logger.add(TOP_DIR / f"var/log/main.log", rotation="500 MB")
 
 try:
     sys.path.append(f'{TOP_DIR}')
@@ -32,12 +34,13 @@ try:
     from Web import GenerateDailyYJAbstracts
     from Web import Login
     from Web import recent_stats
-    from Web import TweetHyoron
+    # from Web import TweetHyoron
     from Web import ResponsibleDevices
     from Web import GetJQuery
     from Web import GetFeatsOrMake
     from Web import MakeRecommend
-    application.register_blueprint(TweetHyoron.tweet_hyoron)
+    from Web import GetAllUserCSV
+    # application.register_blueprint(TweetHyoron.tweet_hyoron)
     # from Web import recent_guradoru
     # from Web import recent_corona
     # from Web import recent_kawaii
@@ -61,16 +64,18 @@ try:
     application.config["UPLOAD_FOLDER"] = 'uploads'
 except Exception as exc:
     raise Exception(f"[{FILE}] there are something wrong with flask_dance, exc = {exc}")
-print(f'[{FILE}] current hostname = {Hostname.hostname()}', file=sys.stdout)
 
+logger.info(f'current hostname = {Hostname.hostname()}')
 
 @application.route('/.well-known/acme-challenge/yes_i_have')
 def yes_i_have():
+    logger.info(f"ip={request.remote_addr}")
     return "ok"
 
 
 @application.route("/")
 def home() -> str:
+    logger.info(f"ip={request.remote_addr}")
     """
     トップ画面, GenerateTopにtwitterの認証情報を入力
     Args:
@@ -83,11 +88,12 @@ def home() -> str:
 
 @application.route("/login")
 def login():
+    logger.info(f"ip={request.remote_addr}")
     return Login.login()
 
 @application.route("/feat", methods=['get', "post"])
 def feat() -> str:
-    print(request.method)
+    logger.info(f"ip={request.remote_addr}")
     if request.method == "GET":
         user = request.args.get('user')
     elif request.method == "POST":
@@ -96,7 +102,7 @@ def feat() -> str:
 
     head = f'<html><head><title>feat</title></head><body>'
 
-    body = f"<p>{user}の特徴！</p>"
+    body = f"""<p><a href="https://twitter.com/{user}" target="_blaknk">{user}</a>の特徴!</p>"""
     body += f'<a href="/feat?user={user}">sharable link</a>'
     df_or_none = GetFeatsOrMake.get(user)
     if df_or_none is None:
@@ -105,20 +111,23 @@ def feat() -> str:
     tmp = tmp[tmp["t"].apply(lambda x: "bit.ly" != x)]
     tmp = tmp.sort_values(by=["f"], ascending=False)[:2000].sort_values(by=["w"], ascending=False)
     tmp.drop(["Unnamed: 0", "f", "sample_size", "record_size"], axis=1, inplace=True)
-    body += tmp.to_html(index=None, col_space=200)
+    # 大きさのノーマライズ
+    tmp["w"] /= tmp["w"].min()
+    body += tmp.to_html(col_space=200)
     tail = '</body></html>'
     html = head + body + tail
     return html
 
 @application.route("/kigyo", methods=['get', "post"])
 def kigyo() -> str:
+    logger.info(f"ip={request.remote_addr}")
     if request.method == "GET":
         user = request.args.get('user')
     elif request.method == "POST":
         user = request.form.get("user").lower()
         redirect("/kigyo?user={user}")
     head = f'<html><head><title>kigyo</title></head><body>'
-    body = f"<p>{user}さんのお勧め企業！</p>"
+    body = f"""<p> <a href="https://twitter.com/{user}" target="_blank">{user}</a>さんのお勧め企業！</p>"""
     body += f'<a href="/kigyo?user={user}">sharable link</a>'
     
     df_or_none = GetFeatsOrMake.get(user)
@@ -130,111 +139,37 @@ def kigyo() -> str:
     buff = []
     for kigyo in kigyos:
         sliced = tmp[tmp.kigyo == kigyo]
-        score = sliced.w.sum() * (10**6)
+        score = int(sliced.w.sum() * (10))
         sliced = sliced[:10]
 
         kigyo = sliced.iloc[0].kigyo
         if "Unnamed: 0" in sliced.columns:
             sliced.drop(["Unnamed: 0"], axis=1, inplace=True)
-        body += f"<p>{kigyo}がお勧め, score = {score:0.04f}</p>"
+        body += f"<p>{kigyo}がお勧め, score = {score}</p>"
         body += sliced.to_html(index=None, col_space=200)
     tail = '</body></html>'
     html = head + body + tail
     return html
 
+@application.route('/get_all_csv')
+def get_all_csv():
+    logger.info(f"ip={request.remote_addr}")
+    path = GetAllUserCSV.get_path()
+    return send_file(path, as_attachment=True)
+
 
 @application.route('/recent_stats/<category>/<page_num>')
 def recent_stats_(category: str, page_num: str) -> str:
+    logger.info(f"ip={request.remote_addr}")
     return recent_stats.recent_stats(category, page_num)
-
-
-@application.route("/sitemap", methods=['GET'])
-@application.route("/sitemap.txt", methods=['GET'])
-def sitemap():
-    with open(f'{TOP_DIR}/var/sitemap.txt') as fp:
-        html = fp.read()
-    return html
 
 
 @application.route("/user_favorited_ranking", methods=['GET'])
 def user_favorited_ranking():
-    with open(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/user_favorited_ranking.html') as fp:
+    logger.info(f"ip={request.remote_addr}")
+    with open(TOP_DIR / 'DataCollection/TwitterStatsBatch/var/user_favorited_ranking.html') as fp:
         html = fp.read()
     return html
-
-
-@application.route("/daily_yj_ranking_list", methods=['GET'])
-def daily_yj_ranking_list():
-    return GenerateDailyYJRankingList.generate_daily_ranking_list()
-
-
-@application.route("/backlog_of_twitter", methods=['get'])
-def backlog_of_twitter():
-    import glob
-
-    head = '<html><head><title>backlog of twitter</title></head><body>'
-    body = ''
-    for fn in reversed(sorted(glob.glob(f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/htmls/*'))):
-        name = Path(fn).name
-        date = name.replace(".html", "")
-        tmp = f'''<a href="/backlog_of_twitter/{name}">{date}</a><br>'''
-        body += tmp
-    tail = '</body></html>'
-    html = head + body + tail
-    return html
-
-
-@application.route("/backlog_of_twitter/<name>", methods=['get'])
-def backlog_of_twitter_name(name):
-    fn = f'{TOP_DIR}/DataCollection/TwitterStatsBatch/var/htmls/{name}'
-    with open(fn) as fp:
-        html = fp.read()
-    soup = BeautifulSoup(html, "lxml")
-    soup.find("head").insert(0, BeautifulSoup(GetJQuery.get_jquery(), "html.parser"))
-    soup.find("body").insert(0, BeautifulSoup(ResponsibleDevices.responsible_devices(), "html.parser"))
-    soup.find("body").insert(-1, BeautifulSoup(ResponsibleDevices.responsible_devices(), "html.parser"))
-    return soup.__str__()
-
-
-@application.route("/twitter/input/<day>/<digest>")
-def twitter_input(day, digest):
-    # print('input', day, digest)
-    with open(f'{TOP_DIR}/var/Twitter/input/{day}/{digest}') as fp:
-        html = fp.read()
-    return html
-
-
-@application.route("/twitter/tweet/<day>/<digest>")
-def twitter_tweet(day, digest):
-    print('tweet', day, digest)
-    with open(f'{TOP_DIR}/var/Twitter/tweet/{day}/{digest}') as fp:
-        html = fp.read()
-    return html
-
-
-@application.route("/twitter/<typed>/<digest>")
-def twitter_(typed, digest):
-    # print(digest)
-    try:
-        if typed in {'tweet', 'css', 'input'}:
-            with open(f'{TOP_DIR}/var/Twitter/{typed}/{digest}') as fp:
-                html = fp.read()
-            return html
-        elif typed in {'jpg', 'jpgs'}:
-            with open(f'{TOP_DIR}/mnt/twitter_jpgs/{digest}', 'rb') as fp:
-                binary = fp.read()
-            response = make_response(binary)
-            response.headers.set('Content-Type', 'image/jpeg')
-            return response
-        elif typed in {'png', 'pngs'}:
-            with open(f'{TOP_DIR}/var/Twitter/pngs/{digest}', 'rb') as fp:
-                binary = fp.read()
-            response = make_response(binary)
-            response.headers.set('Content-Type', 'image/png')
-            return response
-    except Exception as exc:
-        print(exc)
-        return abort(404)
 
 
 if __name__ == "__main__":

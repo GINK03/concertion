@@ -19,8 +19,9 @@ try:
     from Web import GetDigest
     from Web import Base64EncodeDecode
     from Web import Hostname
-    from Web import GetBuzzTweet
+    from Web import GetTopContents
     from Web import GenerateSignate
+    from Web import GetAllUserCSV
 except Exception as exc:
     tb_lineno = sys.exc_info()[2].tb_lineno
     raise Exception(f"[{FILE}] import error, exc = {exc}, tb_lineno = {tb_lineno}")
@@ -63,8 +64,12 @@ def generate_top(twitter: Any) -> str:
         token = twitter.token
         screen_name = token['screen_name']
         body += f"<h3>こんにちは、{screen_name}さん</h3>"
+    
+    body += "<h3>検索</h3>"
+    body += f"<div> {GetTopContents.get()} </div>"
 
-    body += f"<div> {GetBuzzTweet.get_buzz_tweet()} </div>"
+    body += "<h3>検索可能ユーザ数</h3>"
+    body += f"""<p>{GetAllUserCSV.get_user_length()}人 <a href="/get_all_csv">全てのcsv</a></p>"""
 
     return head + body + tail
 

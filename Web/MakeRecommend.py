@@ -21,9 +21,11 @@ def norm_kigyo(df):
     tw = {t: w for t, w in zip(df["term"], df["weight"])}
     return tw
 
-
 with open(KIGYO_DF, "rb") as fp:
-    kigyos = pickle.load(fp)
+    kigyos_df = pickle.load(fp)
+# delete extra kigyo
+for exkigyo in ["社内報"]:
+    kigyos_df = kigyos_df[kigyos_df.kigyo != exkigyo]
 
 def norm_user(df):
     df["w"] /= df["f"].max()
@@ -32,8 +34,8 @@ def norm_user(df):
     tw = {t: w for t, w in zip(df["t"], df["w"])}
     return tw
 
-def calc_rels(tw, kigyos):
-    tmp = kigyos.copy()
+def calc_rels(tw, kigyos_df):
+    tmp = kigyos_df.copy()
     def _cal(ktw, index=0):
         same = set(ktw.keys()) & set(tw.keys())
         score = 0.0
@@ -62,7 +64,7 @@ def run(user):
     """
     tmp = norm_user(pd.read_csv(USER_EXP / f"{user}.gz"))
     print(user)
-    r = calc_rels(tmp, kigyos)
+    r = calc_rels(tmp, kigyos_df)
     print(r)
     #(TOP / "tmp/quering/users/").mkdir(exist_ok=True, parents=True)
     r.to_csv(QUERING_USER / f"{user}.gz", compression="gzip")

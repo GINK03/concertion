@@ -38,6 +38,7 @@ def get(user):
         c = c[:3000]
         c["w"] = [f / IDF[t] for f, t in zip(c.f, c.t)]
         c.sort_values(by=["w"], ascending=False, inplace=True)
+
         c.to_csv(USER_EXP / f"{user}.gz", compression="gzip")
 
     tmp = pd.read_csv((USER_EXP / f"{user}.gz"), compression = "gzip")
