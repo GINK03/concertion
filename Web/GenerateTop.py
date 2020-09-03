@@ -57,6 +57,7 @@ def generate_top(twitter: Any) -> str:
     body = ''
     # titleとか
     body += '<h1>Concertion.Page あなたの特徴の解析とお勧め企業</h1>'
+    """
     if not twitter.authorized:
         body += "<h3>ログインして便利に使おう</h3>"
         body += '<p><a href="/login">ログイン</a></p>'
@@ -64,13 +65,17 @@ def generate_top(twitter: Any) -> str:
         token = twitter.token
         screen_name = token['screen_name']
         body += f"<h3>こんにちは、{screen_name}さん</h3>"
-    
+    """ 
     body += "<h3>検索</h3>"
     body += f"<div> {GetTopContents.get()} </div>"
 
     body += "<h3>検索可能ユーザ数</h3>"
     body += f"""<p>{GetAllUserCSV.get_user_length()}人 <a href="/get_all_csv">全てのcsv</a></p>"""
 
+    body += "<h3>企業の方へ</h3>"
+    body += f"""<p>企業名の設定は自動で行っているので、追加したい場合は以下のメール又はTwitterアカウントのDMでリクエストください。また、企業風土からマッチしているユーザーアプローチをしたい(ソーシャルリクルーティング)等のニーズには個別にご相談に応じます。</p>"""
+    body += f"""<p>angeldust03@gmail.com</p>"""
+    body += f"""<p><a href="https://twitter.com/lie_of_lillie" target="_blank">lie_of_lillie</a></p>"""
     return head + body + tail
 
 
@@ -78,3 +83,4 @@ if __name__ == '__main__':
     # here is single test
     html = get_buzz_tweet()
     print(html)
+

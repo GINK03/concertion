@@ -9,7 +9,7 @@ import re
 import pickle
 
 
-NOISE = {"フルスペック", "ヤベェ", "スゲー", "クソワロタ", "ヤベー", "コロナ", "オッケー", "モック", "ステイホーム", "スミマセン", "ユニーク", "モチベ", "エクセル"}
+NOISE = {"マザーボード", "オフホワイト", "カスミ", "マップ", "リスカ", "企業研究", "説明責任", "時価総額", "ナルメア", "カーマ", "コッコロ", "グヘヘ", "アタシ", "パスツイ", "アハッ", "テメェ", "フロリド", "トレジェイ", "ヘヘッ", "キュン", "アンタ", "アンタ", "バーカ", "レーベ", "経営学", "ミヤマ", "ヒラタ","サムス", "ブランディング", "家庭菜園", "アクタージュ", "ペコリーヌ", "業界研究", "リグマ", "プラベ", "ノヴァ", "バリア", "agc", "内部告発", "アルトリア", "アルテラ", "メルトリリス", "ディップ", "スヤァ", "ペロリ", "グリーンピース", "ローリエ", "ララフェル", "オセロニアン", "有限会社", "ウイイレアプリ", "ヤマケン", "マイデザ", "オスッテ", "エイトフット", "社内報", "セック", "ピジョン", "エルフ", "アテナ", "ハートランド", "イソップ", "アドラー", "ドヤッ", "二十四", "サザビー", "フルスペック", "ヤベェ", "スゲー", "クソワロタ", "ヤベー", "コロナ", "オッケー", "モック", "ステイホーム", "スミマセン", "ユニーク", "モチベ", "エクセル"}
 KIGYO_DF = Path("~/.mnt/22/sdb/kigyo/kigyo/utils/draft_quering/kigyo_df.pkl").expanduser()
 QUERING_USER = Path("~/.mnt/22/sdb/kigyo/kigyo/tmp/quering/users/").expanduser()
 USER_EXP = Path(f"~/.mnt/22/sdb/kigyo/kigyo/tmp/users/user_expansion/").expanduser()
@@ -23,9 +23,8 @@ def norm_kigyo(df):
 
 with open(KIGYO_DF, "rb") as fp:
     kigyos_df = pickle.load(fp)
-# delete extra kigyo
-for exkigyo in ["社内報"]:
-    kigyos_df = kigyos_df[kigyos_df.kigyo != exkigyo]
+
+kigyos_df = kigyos_df[kigyos_df.kigyo.apply(lambda x:x not in NOISE)]
 
 def norm_user(df):
     df["w"] /= df["f"].max()
@@ -38,11 +37,25 @@ def calc_rels(tw, kigyos_df):
     tmp = kigyos_df.copy()
     def _cal(ktw, index=0):
         same = set(ktw.keys()) & set(tw.keys())
-        score = 0.0
+        scores = []
         ts = {}
         for t in same:
-            score += ktw[t] * tw[t]
-            ts[t] = ktw[t] * tw[t]
+            scores.append( ktw[t] * tw[t] )
+
+        scores.sort()
+        if len(scores) >= 5:
+            th = scores[-5]
+        else:
+            th = 0
+        score = 0.0
+        for t in same:
+            s = ktw[t] * tw[t]
+            if th >= s:
+                score += s 
+                ts[t] = s
+            else:
+                score += th
+                ts[t] = th
         return [score, ts][index]
 
     tmp["score"] = tmp["tw"].apply(lambda x: _cal(x, 0))
