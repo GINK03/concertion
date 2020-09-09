@@ -36,7 +36,14 @@ def get(user):
         c["record_size"] = len(c)
         c.sort_values(by=["f"], ascending=False, inplace=True)
         c = c[:3000]
-        c["w"] = [f / IDF[t] for f, t in zip(c.f, c.t)]
+
+        def _cal(f, t) -> float:
+            if IDF.get(t) is not None:
+                return f / IDF[t]
+            else:
+                return 0.0
+
+        c["w"] = [_cal(f, t) for f, t in zip(c.f, c.t)]
         c.sort_values(by=["w"], ascending=False, inplace=True)
 
         c.to_csv(USER_EXP / f"{user}.gz", compression="gzip")

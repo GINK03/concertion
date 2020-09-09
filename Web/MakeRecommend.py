@@ -9,7 +9,9 @@ import re
 import pickle
 
 
-NOISE = {"マザーボード", "オフホワイト", "カスミ", "マップ", "リスカ", "企業研究", "説明責任", "時価総額", "ナルメア", "カーマ", "コッコロ", "グヘヘ", "アタシ", "パスツイ", "アハッ", "テメェ", "フロリド", "トレジェイ", "ヘヘッ", "キュン", "アンタ", "アンタ", "バーカ", "レーベ", "経営学", "ミヤマ", "ヒラタ","サムス", "ブランディング", "家庭菜園", "アクタージュ", "ペコリーヌ", "業界研究", "リグマ", "プラベ", "ノヴァ", "バリア", "agc", "内部告発", "アルトリア", "アルテラ", "メルトリリス", "ディップ", "スヤァ", "ペロリ", "グリーンピース", "ローリエ", "ララフェル", "オセロニアン", "有限会社", "ウイイレアプリ", "ヤマケン", "マイデザ", "オスッテ", "エイトフット", "社内報", "セック", "ピジョン", "エルフ", "アテナ", "ハートランド", "イソップ", "アドラー", "ドヤッ", "二十四", "サザビー", "フルスペック", "ヤベェ", "スゲー", "クソワロタ", "ヤベー", "コロナ", "オッケー", "モック", "ステイホーム", "スミマセン", "ユニーク", "モチベ", "エクセル"}
+TOP = Path(__file__).resolve().parent.parent
+
+NOISY_KIGYO = set(pd.read_csv(Path(TOP / "var/NOISY_KIGYO.csv"))["kigyo"])
 KIGYO_DF = Path("~/.mnt/22/sdb/kigyo/kigyo/utils/draft_quering/kigyo_df.pkl").expanduser()
 QUERING_USER = Path("~/.mnt/22/sdb/kigyo/kigyo/tmp/quering/users/").expanduser()
 USER_EXP = Path(f"~/.mnt/22/sdb/kigyo/kigyo/tmp/users/user_expansion/").expanduser()
@@ -24,7 +26,7 @@ def norm_kigyo(df):
 with open(KIGYO_DF, "rb") as fp:
     kigyos_df = pickle.load(fp)
 
-kigyos_df = kigyos_df[kigyos_df.kigyo.apply(lambda x:x not in NOISE)]
+kigyos_df = kigyos_df[kigyos_df.kigyo.apply(lambda x:x not in NOISY_KIGYO)]
 
 def norm_user(df):
     df["w"] /= df["f"].max()

@@ -71,6 +71,9 @@ def generate_top(twitter: Any) -> str:
 
     body += "<h3>検索可能ユーザ数</h3>"
     body += f"""<p>{GetAllUserCSV.get_user_length()}人 <a href="/get_all_csv">全てのcsv</a></p>"""
+    
+    body += "<h3>企業がどんな特徴なのか見る</h3>"
+    body += f"""<p><a href="/get_all_kigyo_list">現在サポートしている全ての企業</a></p>"""
 
     body += "<h3>企業の方へ</h3>"
     body += f"""<p>企業名の設定は自動で行っているので、追加したい場合は以下のメール又はTwitterアカウントのDMでリクエストください。また、企業風土からマッチしているユーザーアプローチをしたい(ソーシャルリクルーティング)等のニーズには個別にご相談に応じます。</p>"""

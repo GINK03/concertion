@@ -15,6 +15,7 @@ import glob
 import os
 from flask_dance.contrib.twitter import make_twitter_blueprint, twitter
 from loguru import logger
+import re
 
 FILE = Path(__file__).name
 TOP_DIR = Path(__file__).resolve().parent.parent.parent
@@ -44,6 +45,8 @@ try:
     # from Web import recent_guradoru
     # from Web import recent_corona
     # from Web import recent_kawaii
+    from Web import GenerateKigyoList
+
 except Exception as exc:
     raise Exception(f"[{FILE}] import error exc = {exc}")
 
@@ -98,15 +101,18 @@ def feat() -> str:
         user = request.args.get('user')
     elif request.method == "POST":
         user = request.form.get("user").lower()
-        redirect(f"/feat?user={user}")
+        return redirect(f"/feat?user={user}")
 
-    head = f'<html><head><title>feat</title></head><body>'
+    head = f'<html><head><title>{user}さんの特徴</title></head><body>'
 
     body = f"""<p><a href="https://twitter.com/{user}" target="_blaknk">{user}</a>の特徴!</p>"""
     body += f'<a href="/feat?user={user}">sharable link</a>'
     df_or_none = GetFeatsOrMake.get(user)
     if df_or_none is None:
-        raise Exception("存在しません")
+        # TODO
+        # raise Exception("存在しません")
+        logger.info(f'ip={request.remote_addr},user={user},message=user_not_found')
+        return f"{user}さんの情報は存在しませんでした。可能な限りキャッチアップしますのでよろしくお願いたします。"
     tmp = df_or_none
     tmp = tmp[tmp["t"].apply(lambda x: "bit.ly" != x)]
     tmp = tmp.sort_values(by=["f"], ascending=False)[:2000].sort_values(by=["w"], ascending=False)
@@ -125,14 +131,16 @@ def kigyo() -> str:
         user = request.args.get('user')
     elif request.method == "POST":
         user = request.form.get("user").lower()
-        redirect("/kigyo?user={user}")
-    head = f'<html><head><title>kigyo</title></head><body>'
-    body = f"""<p> <a href="https://twitter.com/{user}" target="_blank">{user}</a>さんのお勧め企業！</p>"""
+        return redirect(f"/kigyo?user={user}")
+    head = f'<html><head><title>{user}さんのおすすめ企業</title></head><body>'
+    body = f"""<h1><a href="https://twitter.com/{user}" target="_blank">{user}</a>さんのお勧め企業！</h1>"""
     body += f'<a href="/kigyo?user={user}">sharable link</a>'
     
     df_or_none = GetFeatsOrMake.get(user)
     if df_or_none is None:
-        raise Exception("存在しません")
+        # raise Exception("存在しません")
+        logger.info(f'ip={request.remote_addr},user={user},message=user_not_found')
+        return f"{user}さんの情報は存在しませんでした。可能な限りキャッチアップしますのでよろしくお願いたします。"
     tmp = MakeRecommend.run(user)
     # tmp = pd.read_csv(Path(f"~/.mnt/22/sdb/kigyo/kigyo/tmp/quering/users/{user}.csv.gz"), compression="gzip")
     kigyos = tmp.drop_duplicates(subset=["kigyo"], keep="last").kigyo
@@ -145,7 +153,7 @@ def kigyo() -> str:
         kigyo = sliced.iloc[0].kigyo
         if "Unnamed: 0" in sliced.columns:
             sliced.drop(["Unnamed: 0"], axis=1, inplace=True)
-        body += f"<p>{kigyo}がお勧め, score = {score}</p>"
+        body += f"<h2>{kigyo}がお勧め, score = {score}</h2>"
         body += sliced.to_html(index=None, col_space=200)
     tail = '</body></html>'
     html = head + body + tail
@@ -158,10 +166,26 @@ def get_all_csv():
     return send_file(path, as_attachment=True)
 
 
-@application.route('/recent_stats/<category>/<page_num>')
-def recent_stats_(category: str, page_num: str) -> str:
+@application.route('/get_all_kigyo_list')
+def get_all_kigyo_list() -> str:
     logger.info(f"ip={request.remote_addr}")
-    return recent_stats.recent_stats(category, page_num)
+    return GenerateKigyoList.get()
+
+@application.route('/kigyo_feat', methods=["GET"])
+def kigyo_feat() -> str:
+    logger.info(f"ip={request.remote_addr}")
+    kigyo = request.args.get('kigyo')
+    source = Path(f"~/.mnt/22/sdb/kigyo/kigyo/tmp/kigyos_filters/{kigyo}.csv").expanduser()
+    if not source.exists():
+        return f"{kigyo}は見つかりませんでした。"
+
+    a = pd.read_csv(source)
+    a.sort_values(by=["weight"], ascending=False, inplace=True)
+    
+    head = "<head></head>"
+    body = f"<body><h1>{kigyo}の特徴</h1>"
+    body += a.head(50).to_html() 
+    return head + body + "</body>"
 
 
 @application.route("/user_favorited_ranking", methods=['GET'])
