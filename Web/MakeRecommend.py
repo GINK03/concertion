@@ -16,6 +16,9 @@ KIGYO_DF = Path("~/.mnt/22/sdb/kigyo/kigyo/utils/draft_quering/kigyo_df.pkl").ex
 QUERING_USER = Path("~/.mnt/22/sdb/kigyo/kigyo/tmp/quering/users/").expanduser()
 USER_EXP = Path(f"~/.mnt/22/sdb/kigyo/kigyo/tmp/users/user_expansion/").expanduser()
 
+rs_df = pd.read_csv(Path(TOP / "Utils/rs.csv"))
+kigyo_rank = {kigyo: np.log1p(rank+1) for kigyo, rank in zip(rs_df.kigyo, rs_df["rank"])}
+
 def norm_kigyo(df):
     df["weight"] /= df["freq"].max()
     for i in range(5):
@@ -37,12 +40,17 @@ def norm_user(df):
 
 def calc_rels(tw, kigyos_df):
     tmp = kigyos_df.copy()
-    def _cal(ktw, index=0):
+
+    def _cal(ktw, kigyo, index=0):
         same = set(ktw.keys()) & set(tw.keys())
         scores = []
         ts = {}
         for t in same:
-            scores.append( ktw[t] * tw[t] )
+            if kigyo_rank.get(kigyo) is None:
+                scores.append( ktw[t] * tw[t] )
+            else:
+                scores.append( ktw[t] * tw[t] / kigyo_rank[kigyo] )
+
 
         scores.sort()
         if len(scores) >= 5:
@@ -51,7 +59,10 @@ def calc_rels(tw, kigyos_df):
             th = 0
         score = 0.0
         for t in same:
-            s = ktw[t] * tw[t]
+            if kigyo_rank.get(kigyo) is None:
+                s = ktw[t] * tw[t]
+            else:
+                s = ktw[t] * tw[t] / kigyo_rank[kigyo]
             if th >= s:
                 score += s 
                 ts[t] = s
@@ -59,9 +70,10 @@ def calc_rels(tw, kigyos_df):
                 score += th
                 ts[t] = th
         return [score, ts][index]
+    generator = np.frompyfunc(_cal, 3, 1)
 
-    tmp["score"] = tmp["tw"].apply(lambda x: _cal(x, 0))
-    tmp["ts"] = tmp["tw"].apply(lambda x: _cal(x, 1))
+    tmp["score"] = generator(tmp["tw"].values, tmp["kigyo"].values, [0]*len(tmp)) #.apply(lambda x: _cal(x.tw, x.kigyo, 0), axis=1)
+    tmp["ts"] = generator(tmp["tw"].values, tmp["kigyo"].values, [1]*len(tmp)) #.apply(lambda x: _cal(x.tw, x.kigyo, 1), axis=1)
     tmp.sort_values(by=["score"], ascending=False, inplace=True)
     ret = []
     for kigyo, ts in zip(tmp[:100].kigyo, tmp[:100].ts):
